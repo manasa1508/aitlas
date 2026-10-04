@@ -84,7 +84,7 @@ At larger scale: add PostgreSQL `tsvector`/GIN for keyword retrieval, `pgvector`
 - Public API is read-only except for `POST /ask`; ingestion and curation have no HTTP admin endpoint.
 - Questions have length limits. Nginx applies per-client rate limiting to `/api/ask` in Compose. A larger or model-backed deployment needs shared rate limiting and an inference budget. Do not expose Ollama directly.
 - Frontend renders text normally rather than injecting feed HTML. Source links use `noopener noreferrer`.
-- Docker web port binds to `127.0.0.1`; public hosting needs TLS at a reverse proxy, a fixed allowlist of origins, request limits and routine patching.
+- Docker web port binds to `127.0.0.1`; Nginx re-resolves the API through Docker DNS after container replacement. Public hosting needs TLS at a reverse proxy, a fixed allowlist of origins, request limits and routine patching.
 - Database credentials belong in environment or secret storage. Do not commit `.env` files. Use encrypted daily backups and a restore drill for PostgreSQL.
 - Add structured metrics for source success, lag, duplicate rate, API latency and answer no-match rate. Alert on persistent source failure and stale data.
 - Migrations run before API and worker start. Deploy migrations once, then roll application instances.

@@ -1,0 +1,8 @@
+[
+  {"id":"openai","name":"OpenAI","url":"https://openai.com/news/rss.xml","kind":"rss","interval_minutes":15,"options":{"ai_focused":true}},
+  {"id":"google-ai","name":"Google AI","url":"https://blog.google/innovation-and-ai/technology/ai/rss/","kind":"rss","interval_minutes":15,"options":{"ai_focused":true}},
+  {"id":"github-blog","name":"GitHub Blog","url":"https://github.blog/feed/","kind":"rss","interval_minutes":15,"options":{}},
+  {"id":"arxiv","name":"arXiv","url":"https://export.arxiv.org/api/query","kind":"arxiv","interval_minutes":30,"options":{"categories":["cs.AI","cs.LG","cs.CL"],"max_results":25}},
+  {"id":"hacker-news","name":"Hacker News","url":"https://hn.algolia.com/api/v1/search_by_date","kind":"hacker_news","interval_minutes":5,"options":{"query":"AI","hits_per_page":40}},
+  {"id":"github-repos","name":"GitHub repositories","url":"https://api.github.com/search/repositories","kind":"github_repos","interval_minutes":30,"options":{"query":"topic:machine-learning","days_back":14,"per_page":20}}
+]

@@ -80,12 +80,17 @@ def overview(db: DB):
 
     high = top_kind("news", 1) + top_kind("paper", 1) + top_kind("repo", 1) + top_kind("news", 2)[1:]
     recent = items[:8]
-    window = [item for item in items if item.published_at.replace(tzinfo=timezone.utc) >= utcnow() - timedelta(hours=24)]
+    cutoff = utcnow() - timedelta(hours=24)
     window_label = "last 24 hours"
-    if not window:
-        window = [item for item in items if item.published_at.replace(tzinfo=timezone.utc) >= utcnow() - timedelta(days=7)]
+    window_count = db.scalar(select(func.count()).select_from(Item).where(Item.published_at >= cutoff)) or 0
+    if not window_count:
+        cutoff = utcnow() - timedelta(days=7)
+        window_count = db.scalar(select(func.count()).select_from(Item).where(Item.published_at >= cutoff)) or 0
         window_label = "last 7 days"
-    themes = Counter(tag for item in window for tag in item.tags if tag != "AI")
+    source_count = db.scalar(select(func.count(func.distinct(Item.source_id))).where(Item.published_at >= cutoff)) or 0
+    # Theme ranking uses a bounded recent sample; the displayed item and source counts are exact.
+    theme_tags = db.scalars(select(Item.tags).where(Item.published_at >= cutoff).order_by(Item.published_at.desc()).limit(500)).all()
+    themes = Counter(tag for tags in theme_tags for tag in tags if tag != "AI")
     counts = {kind: db.scalar(select(func.count()).select_from(Item).where(Item.kind == kind)) or 0 for kind in ("news", "paper", "repo")}
     sources = db.scalars(select(Source).order_by(Source.name)).all()
     return {
@@ -95,7 +100,7 @@ def overview(db: DB):
         "company_count": db.scalar(select(func.count()).select_from(Company)) or 0,
         "featured": [item_json(i) for i in high],
         "latest": [item_json(i) for i in recent],
-        "brief": {"window": window_label, "count": len(window), "source_count": len({item.source_id for item in window}), "themes": [{"name": name, "count": count} for name, count in themes.most_common(3)]},
+        "brief": {"window": window_label, "count": window_count, "source_count": source_count, "themes": [{"name": name, "count": count} for name, count in themes.most_common(3)]},
         "last_refresh": iso(latest.finished_at) if latest else None,
         "refresh_status": latest.status if latest else "never",
         "sources": [{"name": s.name, "enabled": s.enabled, "interval_minutes": s.interval_minutes, "next_fetch_at": iso(s.next_fetch_at), "last_success_at": iso(s.last_success_at), "last_error": s.last_error} for s in sources],

@@ -38,9 +38,9 @@ OLLAMA_MODEL=qwen3:8b
 
 [Qwen3-8B is Apache-2.0 licensed](https://huggingface.co/Qwen/Qwen3-8B). Model responses are marked for source review. The API falls back to extractive answers when the model is unavailable or fails citation validation.
 
-## Docker deployment preview
+## Docker deployment
 
-The Compose configuration runs PostgreSQL, a migration/seed step, API, ingestion worker, and Nginx frontend. Images build successfully; the stack started with healthy database, API and web services on the authoring host. Run the commands below in your own environment to verify the complete stack and ingestion against your network.
+The Compose configuration runs PostgreSQL, a migration/seed step, API, ingestion worker, and Nginx frontend. The stack and a six-source containerized ingestion cycle were verified on the authoring host. Run the commands below in your own environment to check your network and credentials.
 
 ```bash
 cp .env.example .env

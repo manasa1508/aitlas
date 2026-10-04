@@ -1,6 +1,6 @@
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -12,10 +12,10 @@ from app.db import Base, SessionLocal, engine  # noqa: E402
 from app.ingest import canonical_url, insert_item, upsert_source  # noqa: E402
 from app import ingest  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Source  # noqa: E402
+from app.models import Item, Source  # noqa: E402
 from app.seed import seed  # noqa: E402
 from app.sources import sync_defaults  # noqa: E402
-from sqlalchemy import select  # noqa: E402
+from sqlalchemy import func, select  # noqa: E402
 
 
 def setup_module():
@@ -109,3 +109,16 @@ def test_github_token_is_only_sent_to_github_api(monkeypatch):
         ("https://api.github.com/search/repositories", "Bearer test-token"),
         ("https://api.github.com.evil.example/feed", None),
     ]
+
+
+def test_daily_brief_counts_beyond_first_page():
+    now = datetime.now(timezone.utc)
+    with SessionLocal() as session:
+        upsert_source(session, "bulk", "Bulk test", "https://example.org/feed", "rss")
+        before = session.scalar(select(func.count()).select_from(Item).where(Item.published_at >= now - timedelta(hours=24))) or 0
+        session.add_all(Item(kind="news", title=f"AI news item {i}", summary="Test item", url=f"https://example.org/bulk/{i}", source_id="bulk", published_at=now, tags=["Research"], score=50, title_fingerprint=f"bulk {i}") for i in range(121))
+        session.commit()
+    with TestClient(app) as client:
+        brief = client.get("/api/overview").json()["brief"]
+        assert brief["window"] == "last 24 hours"
+        assert brief["count"] == before + 121

@@ -1,6 +1,7 @@
 """Operator-only source registry. No source management HTTP endpoints are exposed."""
 import argparse
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -11,8 +12,8 @@ from .db import SessionLocal
 from .models import Source
 
 DEFAULTS = Path(__file__).resolve().parents[1] / "config" / "sources.json"
-KINDS = {"rss", "arxiv", "hacker_news", "github_repos"}
-API_HOSTS = {"arxiv": "export.arxiv.org", "hacker_news": "hn.algolia.com", "github_repos": "api.github.com"}
+KINDS = {"rss", "arxiv", "hacker_news", "github_repos", "greenhouse_jobs", "hf_models"}
+API_HOSTS = {"arxiv": "export.arxiv.org", "hacker_news": "hn.algolia.com", "github_repos": "api.github.com", "greenhouse_jobs": "boards-api.greenhouse.io", "hf_models": "huggingface.co"}
 
 
 def validate_url(url: str) -> str:
@@ -28,6 +29,10 @@ def validate_source(kind: str, url: str, interval: int, options: dict) -> None:
         raise ValueError("Invalid source kind, interval or options")
     if kind in API_HOSTS and urlparse(url).hostname != API_HOSTS[kind]:
         raise ValueError(f"{kind} source must use {API_HOSTS[kind]}")
+    if kind == "greenhouse_jobs" and not re.fullmatch(r"/v1/boards/[a-zA-Z0-9_-]+/jobs", urlparse(url).path):
+        raise ValueError("Greenhouse source must be a public board jobs endpoint")
+    if kind == "hf_models" and urlparse(url).path != "/api/models":
+        raise ValueError("Hugging Face source must use the public model listing endpoint")
 
 
 def sync_defaults(session: Session) -> int:

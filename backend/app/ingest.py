@@ -30,8 +30,8 @@ AI_TERMS = {
 
 
 def clean_text(value: str, limit: int = 700) -> str:
-    value = re.sub(r"<[^>]+>", " ", value or "")
-    value = html.unescape(value)
+    value = html.unescape(html.unescape(value or ""))
+    value = re.sub(r"<[^>]+>", " ", value)
     value = re.sub(r"\s+", " ", value).strip()
     return value[:limit].rstrip()
 
@@ -76,6 +76,19 @@ def classify(text: str) -> list[str]:
     return [label for label, words in groups.items() if any(word in lower for word in words)][:3] or ["AI"]
 
 
+def audience_for(text: str, source: Source) -> str:
+    lower = text.lower()
+    business = any(term in lower for term in ("funding", "revenue", "enterprise", "acquisition", "startup", "investment", "market", "partnership", "adoption", "regulation", "policy", "business"))
+    developer = any(term in lower for term in ("developer", "repository", "github", "code", "sdk", "api", "framework", "benchmark", "open source", "pytorch", "inference", "fine-tuning"))
+    if business and developer:
+        return "both"
+    if business:
+        return "business"
+    if developer:
+        return "developer"
+    return (source.options or {}).get("audience", "general")
+
+
 def relevant(title: str, summary: str, source: Source) -> bool:
     if source.kind in {"arxiv", "github_repos"} or (source.options or {}).get("ai_focused"):
         return True
@@ -92,7 +105,7 @@ def upsert_source(session: Session, id_: str, name: str, url: str, kind: str) ->
     return source
 
 
-def insert_item(session: Session, *, kind: str, title: str, summary: str, url: str, source_id: str, published_at: datetime) -> bool:
+def insert_item(session: Session, *, kind: str, title: str, summary: str, url: str, source_id: str, published_at: datetime, details: dict | None = None) -> bool:
     url = canonical_url(url)
     title = clean_text(title, 500)
     summary = clean_text(summary)
@@ -109,7 +122,7 @@ def insert_item(session: Session, *, kind: str, title: str, summary: str, url: s
     tags = classify(f"{title} {summary}")
     source_bonus = 20 if source.kind == "arxiv" or (source.options or {}).get("ai_focused") else 10
     score = min(100.0, 45 + source_bonus + (10 if "Research" in tags else 0) + (8 if "Open source" in tags else 0))
-    session.add(Item(kind=kind, title=title, summary=summary or title, url=url, source_id=source_id, published_at=published_at, tags=tags, score=score, title_fingerprint=fp))
+    session.add(Item(kind=kind, title=title, summary=summary or title, url=url, source_id=source_id, published_at=published_at, tags=tags, details={"audience": audience_for(f"{title} {summary}", source), **(details or {})}, score=score, title_fingerprint=fp))
     session.flush()
     return True
 
@@ -158,9 +171,109 @@ def ingest_github(session: Session, client: httpx.Client, source: Source) -> int
     data = response.json()
     count = 0
     for repo in data.get("items", []):
-        # Total stars are source facts; we intentionally do not infer 24-hour velocity.
-        title = f"{repo.get('full_name', '')} · {repo.get('stargazers_count', 0):,} stars"
-        count += insert_item(session, kind="repo", title=title, summary=repo.get("description") or "New machine learning repository", url=repo.get("html_url", ""), source_id=source.id, published_at=parse_date(repo.get("created_at")))
+        url = canonical_url(repo.get("html_url", ""))
+        if not url:
+            continue
+        stars = int(repo.get("stargazers_count") or 0)
+        title = clean_text(repo.get("full_name", ""), 500)
+        summary = clean_text(repo.get("description") or "Machine learning repository")
+        existing = session.scalar(select(Item).where(Item.url == url))
+        if existing and existing.kind == "repo":
+            previous = (existing.details or {}).get("stars")
+            delta = stars - previous if isinstance(previous, int) else None
+            existing.details = {"audience": "developer", "stars": stars, "stars_delta_since_last_sync": delta, "language": repo.get("language"), "license": (repo.get("license") or {}).get("spdx_id"), "last_observed_at": utcnow().isoformat()}
+            existing.title = title
+            existing.summary = summary
+            existing.last_seen_at = utcnow()
+            existing.score = min(100.0, 55 + min(35, max(0, delta or 0) * 2))
+        elif not existing:
+            count += insert_item(session, kind="repo", title=title, summary=summary, url=url, source_id=source.id, published_at=parse_date(repo.get("created_at")), details={"audience": "developer", "stars": stars, "stars_delta_since_last_sync": None, "language": repo.get("language"), "license": (repo.get("license") or {}).get("spdx_id"), "last_observed_at": utcnow().isoformat()})
+    return count
+
+
+def job_role(title: str) -> str:
+    lower = title.lower()
+    if any(term in lower for term in ("research", "scientist", "machine learning", "ai engineer", "ml engineer")):
+        return "Research & AI"
+    if any(term in lower for term in ("engineer", "developer", "architect", "infrastructure", "security", "data", "technical")):
+        return "Engineering"
+    if any(term in lower for term in ("product", "design", "ux")):
+        return "Product & design"
+    return "Business & operations"
+
+
+def ingest_greenhouse_jobs(session: Session, client: httpx.Client, source: Source) -> int:
+    response = get_with_retry(client, source.url, params={"content": "true"})
+    response.raise_for_status()
+    payload = response.json()
+    jobs = payload.get("jobs") if isinstance(payload, dict) else None
+    if not isinstance(jobs, list) or len(jobs) > 2000:
+        raise ValueError("Greenhouse returned an invalid or oversized jobs list")
+    existing = {row.url: row for row in session.scalars(select(Item).where(Item.source_id == source.id, Item.kind == "job")).all()}
+    seen: set[str] = set()
+    now = utcnow()
+    company = str((source.options or {}).get("company") or source.name).strip()[:160]
+    added = 0
+    for job in jobs:
+        if not isinstance(job, dict) or job.get("internal_job_id") is None:
+            continue
+        url = canonical_url(job.get("absolute_url") or "")
+        if not url or urlparse(url).scheme != "https":
+            continue
+        title = clean_text(job.get("title") or "", 300)
+        if len(title) < 4:
+            continue
+        seen.add(url)
+        location = clean_text((job.get("location") or {}).get("name") or "Location not specified", 160)
+        department = ", ".join(clean_text(d.get("name") or "", 80) for d in (job.get("departments") or [])[:3])
+        description = clean_text(job.get("content") or "", 700)
+        details = {"audience": "developer" if job_role(title) in {"Research & AI", "Engineering"} else "business", "company": company, "location": location, "department": department, "role": job_role(title), "updated_at": job.get("updated_at"), "misses": 0}
+        if url in existing:
+            row = existing[url]
+            row.title = title
+            row.summary = description or f"{title} at {company} · {location}"
+            row.details = details
+            row.active = True
+            row.last_seen_at = now
+        else:
+            session.add(Item(kind="job", title=title, summary=description or f"{title} at {company} · {location}", url=url, source_id=source.id, published_at=parse_date(job.get("first_published") or job.get("updated_at")), tags=[job_role(title)], details=details, active=True, last_seen_at=now, score=60, title_fingerprint=fingerprint(f"{company} {title} {location}")))
+            added += 1
+    for url, row in existing.items():
+        if url not in seen and row.active:
+            misses = int((row.details or {}).get("misses", 0)) + 1
+            row.details = {**(row.details or {}), "misses": misses}
+            if misses >= 2:
+                row.active = False
+    session.flush()
+    return added
+
+
+def ingest_hf_models(session: Session, client: httpx.Client, source: Source) -> int:
+    limit = min(100, max(1, int((source.options or {}).get("limit", 30))))
+    response = get_with_retry(client, source.url, params={"sort": "trendingScore", "direction": "-1", "limit": limit})
+    response.raise_for_status()
+    models = response.json()
+    if not isinstance(models, list):
+        raise ValueError("Hugging Face returned an invalid model list")
+    count = 0
+    for rank, model in enumerate(models[:limit], start=1):
+        model_id = model.get("id") or model.get("modelId")
+        if not isinstance(model_id, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", model_id):
+            continue
+        url = f"https://huggingface.co/{model_id}"
+        license_tag = next((tag.removeprefix("license:") for tag in model.get("tags", []) if isinstance(tag, str) and tag.startswith("license:")), None)
+        details = {"audience": "developer", "task": model.get("pipeline_tag"), "downloads": model.get("downloads"), "likes": model.get("likes"), "trending_score": model.get("trendingScore"), "trending_rank": rank, "license": license_tag}
+        summary = f"Trending model on Hugging Face · {model.get('pipeline_tag') or 'task not specified'} · {int(model.get('downloads') or 0):,} downloads"
+        existing = session.scalar(select(Item).where(Item.url == url))
+        if existing and existing.kind == "model":
+            existing.summary = summary
+            existing.details = details
+            existing.last_seen_at = utcnow()
+            existing.score = max(50.0, 100.0 - rank)
+        elif not existing:
+            session.add(Item(kind="model", title=model_id, summary=summary, url=url, source_id=source.id, published_at=parse_date(model.get("createdAt")), tags=["Models"], details=details, active=True, last_seen_at=utcnow(), score=max(50.0, 100.0 - rank), title_fingerprint=fingerprint(model_id)))
+            count += 1
+    session.flush()
     return count
 
 
@@ -201,7 +314,7 @@ def run_ingestion(session: Session, *, force: bool = False) -> JobRun | None:
     run = JobRun(status="running", errors=[])
     session.add(run)
     session.commit()
-    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github}
+    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "hf_models": ingest_hf_models}
     headers = {"User-Agent": settings.user_agent, "Accept": "application/json, application/atom+xml, application/rss+xml, */*"}
     errors: list[str] = []
     inserted = 0

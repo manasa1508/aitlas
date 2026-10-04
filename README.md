@@ -1,8 +1,8 @@
 # AItlas
 
-A local-first, open-source AI intelligence application. It combines live news, papers and repositories with a cited knowledge timeline, company evidence, real use cases, opportunity hypotheses, unified search, and source-grounded Q&A.
+A local-first, open-source AI intelligence application. It combines live business and developer news, papers, repositories, model listings and public AI-company jobs with cited history, company evidence, use cases, opportunity hypotheses, paginated search, and source-grounded Q&A.
 
-The attached concept note describes a much larger platform. This repository implements a useful **V1**, and [ARCHITECTURE.md](ARCHITECTURE.md) describes how to extend it without presenting unverified market estimates as facts.
+This repository implements a useful **V1**. [ARCHITECTURE.md](ARCHITECTURE.md) describes how to extend it without presenting unverified market estimates as facts.
 
 ## Run locally
 
@@ -40,7 +40,7 @@ OLLAMA_MODEL=qwen3:8b
 
 ## Docker deployment
 
-The Compose configuration runs PostgreSQL, a migration/seed step, API, ingestion worker, and Nginx frontend. The stack and a six-source containerized ingestion cycle were verified on the authoring host. Run the commands below in your own environment to check your network and credentials.
+The Compose configuration runs PostgreSQL, a migration/seed step, API, ingestion worker, and Nginx frontend. The expanded 21-source ingestion cycle and the job, model, company-pulse and search endpoints were verified through the containerized web proxy on the authoring host. Run the commands below in your environment to check your network and credentials.
 
 ```bash
 cp .env.example .env
@@ -54,22 +54,25 @@ If your network inspects TLS traffic through an organization certificate, set `C
 
 ## Included features
 
-- Source ingestion: OpenAI RSS, Google AI RSS, GitHub Blog RSS, arXiv, Hacker News, and recent GitHub ML repositories.
+- Twenty-one default sources spanning public publisher and developer RSS feeds, arXiv, Hacker News, GitHub repositories, Hugging Face model listings, and five Greenhouse company job boards.
 - Database-backed source registry with per-source polling schedules, exponential failure backoff, and an operator CLI for adding feeds or changing source options without code edits.
 - URL and near-title deduplication, bounded fetches, error isolation by source, sync health and timestamps.
-- Auto-computed 24-hour coverage brief with a seven-day fallback, diverse signal selection, filters, historical context matches, and browser-local bookmarks.
+- Business and developer filters, a model watch, live job search by role/company/location, and a company hiring pulse that separates news mentions from verified claims.
+- Auto-computed 24-hour coverage brief with a seven-day fallback, historical context matches, and browser-local bookmarks.
 - Eight cited AI milestones, three cited company profiles, three documented use cases, and three explicitly labeled opportunity hypotheses.
-- Search across the indexed corpus and Q&A with numbered citations. Optional local Ollama synthesis.
-- Responsive frontend, API docs, SQLite local mode, PostgreSQL Compose mode, an Alembic initial migration, and backend tests.
+- Paginated search across active live records and reviewed content, plus Q&A with numbered citations and optional local Ollama synthesis.
+- Responsive frontend, API docs, SQLite local mode, PostgreSQL Compose mode, versioned Alembic migrations, and backend tests.
 
-Company information and case study outcomes are reported by their linked publishers. The app does not infer that a company's full AI stack, adoption level, or outcomes are independently verified.
+Company information and case study outcomes are reported by their linked publishers. Live job counts come from public boards and are checked hourly; a job or news mention is not proof of AI adoption. The source registry is a curated starting set, not complete coverage of every publisher, company, role, repository or model. GitHub star change is measured since the prior sync, not presented as a 24-hour trend.
+
+Every default connector uses a public endpoint. The repository contains no private company data, local database, credentials or certificate files.
 
 ### Add or adjust live sources
 
 ```bash
 cd backend
 uv run python -m app.sources list
-uv run python -m app.sources add-rss --id pytorch-blog --name "PyTorch Blog" --url https://pytorch.org/blog/feed.xml --interval 15
+uv run python -m app.sources add-rss --id my-feed --name "My AI feed" --url https://example.org/feed.xml --interval 15
 uv run python -m app.sources set-interval arxiv 30
 uv run python -m app.sources set-enabled github-blog false
 ```

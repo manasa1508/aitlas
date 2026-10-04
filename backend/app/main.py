@@ -8,7 +8,7 @@ import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import get_db, settings, utcnow
@@ -33,7 +33,7 @@ def iso(value: datetime | None) -> str | None:
 
 
 def item_json(item: Item) -> dict:
-    return {"id": item.id, "kind": item.kind, "title": item.title, "summary": item.summary, "url": item.url, "source": item.source.name, "published_at": iso(item.published_at), "tags": item.tags, "score": item.score, "tier": tier(item)}
+    return {"id": item.id, "kind": item.kind, "title": item.title, "summary": item.summary, "url": item.url, "source": item.source.name, "published_at": iso(item.published_at), "tags": item.tags, "details": item.details or {}, "score": item.score, "tier": tier(item)}
 
 
 def tier(item: Item) -> str:
@@ -78,20 +78,21 @@ def overview(db: DB):
     def top_kind(kind: str, count: int) -> list[Item]:
         return sorted((item for item in items if item.kind == kind), key=signal_rank, reverse=True)[:count]
 
-    high = top_kind("news", 1) + top_kind("paper", 1) + top_kind("repo", 1) + top_kind("news", 2)[1:]
+    high = top_kind("news", 1) + top_kind("paper", 1) + top_kind("repo", 1) + top_kind("model", 1)
     recent = items[:8]
+    briefing_kinds = ("news", "paper", "repo", "model")
     cutoff = utcnow() - timedelta(hours=24)
     window_label = "last 24 hours"
-    window_count = db.scalar(select(func.count()).select_from(Item).where(Item.published_at >= cutoff)) or 0
+    window_count = db.scalar(select(func.count()).select_from(Item).where(Item.published_at >= cutoff, Item.kind.in_(briefing_kinds))) or 0
     if not window_count:
         cutoff = utcnow() - timedelta(days=7)
-        window_count = db.scalar(select(func.count()).select_from(Item).where(Item.published_at >= cutoff)) or 0
+        window_count = db.scalar(select(func.count()).select_from(Item).where(Item.published_at >= cutoff, Item.kind.in_(briefing_kinds))) or 0
         window_label = "last 7 days"
-    source_count = db.scalar(select(func.count(func.distinct(Item.source_id))).where(Item.published_at >= cutoff)) or 0
+    source_count = db.scalar(select(func.count(func.distinct(Item.source_id))).where(Item.published_at >= cutoff, Item.kind.in_(briefing_kinds))) or 0
     # Theme ranking uses a bounded recent sample; the displayed item and source counts are exact.
-    theme_tags = db.scalars(select(Item.tags).where(Item.published_at >= cutoff).order_by(Item.published_at.desc()).limit(500)).all()
+    theme_tags = db.scalars(select(Item.tags).where(Item.published_at >= cutoff, Item.kind.in_(briefing_kinds)).order_by(Item.published_at.desc()).limit(500)).all()
     themes = Counter(tag for tags in theme_tags for tag in tags if tag != "AI")
-    counts = {kind: db.scalar(select(func.count()).select_from(Item).where(Item.kind == kind)) or 0 for kind in ("news", "paper", "repo")}
+    counts = {kind: db.scalar(select(func.count()).select_from(Item).where(Item.kind == kind, Item.active.is_(True))) or 0 for kind in ("news", "paper", "repo", "model", "job")}
     sources = db.scalars(select(Source).order_by(Source.name)).all()
     return {
         "counts": counts,
@@ -108,15 +109,24 @@ def overview(db: DB):
 
 
 @app.get("/api/items")
-def items(db: DB, kind: str = Query("all", pattern="^(all|news|paper|repo)$"), q: str = Query("", max_length=120), limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0)):
-    stmt = select(Item).options(selectinload(Item.source))
-    if kind != "all":
+def items(db: DB, kind: str = Query("signals", pattern="^(signals|all|news|paper|repo|model|job)$"), audience: str = Query("all", pattern="^(all|business|developer)$"), role: str = Query("all", max_length=60), location: str = Query("", max_length=120), sort: str = Query("recent", pattern="^(recent|trending)$"), q: str = Query("", max_length=120), limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0)):
+    stmt = select(Item).options(selectinload(Item.source)).where(Item.active.is_(True))
+    if kind == "signals":
+        stmt = stmt.where(Item.kind.in_(("news", "paper", "repo", "model")))
+    elif kind != "all":
         stmt = stmt.where(Item.kind == kind)
+    if audience != "all":
+        stmt = stmt.where(Item.details["audience"].as_string().in_((audience, "both")))
+    if role != "all":
+        stmt = stmt.where(Item.kind == "job", Item.details["role"].as_string() == role)
+    if location.strip():
+        stmt = stmt.where(Item.kind == "job", Item.details["location"].as_string().ilike(f"%{location.strip()}%"))
     if q.strip():
         term = f"%{q.strip()}%"
-        stmt = stmt.where(or_(Item.title.ilike(term), Item.summary.ilike(term)))
+        stmt = stmt.where(or_(Item.title.ilike(term), Item.summary.ilike(term), Item.details["company"].as_string().ilike(term), Item.details["location"].as_string().ilike(term)))
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-    rows = db.scalars(stmt.order_by(Item.published_at.desc()).offset(offset).limit(limit)).all()
+    order = (Item.score.desc(), Item.published_at.desc()) if sort == "trending" else (Item.published_at.desc(),)
+    rows = db.scalars(stmt.order_by(*order).offset(offset).limit(limit)).all()
     return {"total": total, "items": [item_json(i) for i in rows]}
 
 
@@ -145,6 +155,17 @@ def companies(db: DB, q: str = Query("", max_length=120)):
     return profiles
 
 
+@app.get("/api/company-pulse")
+def company_pulse(db: DB):
+    pulse = []
+    for source in db.scalars(select(Source).where(Source.kind == "greenhouse_jobs", Source.enabled.is_(True)).order_by(Source.name)).all():
+        name = str((source.options or {}).get("company") or source.name)
+        open_roles = db.scalar(select(func.count()).select_from(Item).where(Item.kind == "job", Item.source_id == source.id, Item.active.is_(True))) or 0
+        mentions = db.scalars(select(Item).options(selectinload(Item.source)).where(Item.kind == "news", or_(Item.title.ilike(f"%{name}%"), Item.summary.ilike(f"%{name}%"))).order_by(Item.published_at.desc()).limit(3)).all()
+        pulse.append({"name": name, "open_roles": open_roles, "board_url": source.url, "last_checked": iso(source.last_success_at), "recent_mentions": [item_json(item) for item in mentions]})
+    return pulse
+
+
 @app.get("/api/use-cases")
 def use_cases(db: DB, industry: str = Query("all", max_length=100), q: str = Query("", max_length=120)):
     stmt = select(UseCase).options(selectinload(UseCase.company))
@@ -166,13 +187,10 @@ def opportunities(db: DB, industry: str = Query("all", max_length=100)):
 
 def tokens(text: str) -> set[str]:
     stop = {"what", "where", "when", "which", "with", "from", "that", "this", "about", "have", "does", "their", "could", "would", "been", "into", "your", "are", "the", "and", "for", "how", "why", "was", "who", "can", "did"}
-    return {t for t in re.findall(r"[a-z0-9]+", text.lower()) if len(t) > 2 and t not in stop}
+    return {t for t in re.findall(r"[a-z0-9]+", text.lower()) if (len(t) > 2 or t in {"ai", "ml"}) and t not in stop}
 
 
-def retrieve(db: Session, query: str, limit: int = 6) -> list[dict]:
-    query_tokens = tokens(query)
-    if not query_tokens:
-        return []
+def curated_documents(db: Session) -> list[dict]:
     docs: list[dict] = []
     for row in db.scalars(select(Knowledge)).all():
         docs.append({"type": "history", "title": row.title, "snippet": row.summary, "url": row.source_url, "date": str(row.year)})
@@ -180,13 +198,36 @@ def retrieve(db: Session, query: str, limit: int = 6) -> list[dict]:
         docs.append({"type": "use case", "title": row.title, "snippet": f"{row.summary} {row.outcome}", "url": row.evidence_url, "date": None})
     for row in db.scalars(select(Evidence)).all():
         docs.append({"type": "company evidence", "title": row.title, "snippet": row.claim, "url": row.source_url, "date": iso(row.observed_at)})
-    for row in db.scalars(select(Item).order_by(Item.published_at.desc()).limit(500)).all():
-        docs.append({"type": row.kind, "title": row.title, "snippet": row.summary, "url": row.url, "date": iso(row.published_at)})
+    for row in db.scalars(select(Company)).all():
+        docs.append({"type": "company", "title": row.name, "snippet": row.summary, "url": row.website, "date": None})
+    for row in db.scalars(select(Opportunity)).all():
+        docs.append({"type": "hypothesis", "title": row.title, "snippet": f"{row.thesis} {row.barrier}", "url": row.evidence_url, "date": None})
+    return docs
+
+
+def item_search_conditions(query: str):
+    words = sorted(tokens(query))[:8]
+    if not words:
+        return []
+    return [or_(Item.title.ilike(f"%{word}%"), Item.summary.ilike(f"%{word}%"), Item.details["company"].as_string().ilike(f"%{word}%"), Item.details["location"].as_string().ilike(f"%{word}%")) for word in words]
+
+
+def document_score(doc: dict, query_tokens: set[str]) -> int:
+    return 3 * len(query_tokens & tokens(doc["title"])) + len(query_tokens & tokens(doc["snippet"]))
+
+
+def retrieve(db: Session, query: str, limit: int = 6) -> list[dict]:
+    query_tokens = tokens(query)
+    if not query_tokens:
+        return []
+    docs = curated_documents(db)
+    conditions = item_search_conditions(query)
+    for row in db.scalars(select(Item).where(Item.active.is_(True), or_(*conditions)).order_by(Item.published_at.desc()).limit(500)).all():
+        label = f"{row.title} {(row.details or {}).get('company', '')} {(row.details or {}).get('location', '')}"
+        docs.append({"type": row.kind, "title": label, "snippet": row.summary, "url": row.url, "date": iso(row.published_at)})
     scored = []
     for doc in docs:
-        title_hits = len(query_tokens & tokens(doc["title"]))
-        body_hits = len(query_tokens & tokens(doc["snippet"]))
-        score = title_hits * 3 + body_hits
+        score = document_score(doc, query_tokens)
         if score:
             scored.append((score, doc))
     scored.sort(key=lambda pair: pair[0], reverse=True)
@@ -194,8 +235,28 @@ def retrieve(db: Session, query: str, limit: int = 6) -> list[dict]:
 
 
 @app.get("/api/search")
-def search(db: DB, q: str = Query(..., min_length=2, max_length=120)):
-    return {"query": q, "results": retrieve(db, q, 20)}
+def search(db: DB, q: str = Query(..., min_length=2, max_length=120), limit: int = Query(30, ge=1, le=100), offset: int = Query(0, ge=0)):
+    query_tokens = tokens(q)
+    if not query_tokens:
+        return {"query": q, "total": 0, "results": []}
+    curated = [doc for doc in curated_documents(db) if query_tokens <= tokens(f"{doc['title']} {doc['snippet']}")]
+    curated.sort(key=lambda doc: document_score(doc, query_tokens), reverse=True)
+    conditions = item_search_conditions(q)
+    base = select(Item).where(Item.active.is_(True))
+    phrase = f"%{q.strip()}%"
+    phrase_condition = or_(Item.title.ilike(phrase), Item.summary.ilike(phrase), Item.details["company"].as_string().ilike(phrase), Item.details["location"].as_string().ilike(phrase))
+    phrase_stmt = base.where(phrase_condition)
+    phrase_count = db.scalar(select(func.count()).select_from(phrase_stmt.subquery())) or 0
+    stmt = phrase_stmt if phrase_count else base.where(and_(*conditions))
+    item_count = phrase_count or (db.scalar(select(func.count()).select_from(stmt.subquery())) or 0)
+    results = curated[offset:offset + limit]
+    remaining = limit - len(results)
+    if remaining:
+        item_offset = max(0, offset - len(curated))
+        phrase_match = case((Item.title.ilike(phrase), 0), (Item.details["company"].as_string().ilike(phrase), 1), else_=2)
+        rows = db.scalars(stmt.order_by(phrase_match, Item.published_at.desc()).offset(item_offset).limit(remaining)).all()
+        results.extend({"type": row.kind, "title": row.title, "snippet": f"{(row.details or {}).get('company', '')} · {(row.details or {}).get('location', '')} · {row.summary}" if row.kind == "job" else row.summary, "url": row.url, "date": iso(row.published_at)} for row in rows)
+    return {"query": q, "total": len(curated) + item_count, "results": results}
 
 
 class AskRequest(BaseModel):

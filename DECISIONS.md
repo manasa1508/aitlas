@@ -10,7 +10,8 @@ The current code uses conservative defaults so it can run now. These decisions c
 | Search index | SQL filters plus bounded lexical ranking | PostgreSQL full-text search, then pgvector hybrid retrieval using an Apache-licensed embedding model | Once the corpus exceeds roughly 10k indexed records or relevance suffers |
 | Content partnerships | Headlines, short excerpts and links from public feeds; hand-reviewed case summaries | Licensed datasets and direct publisher agreements | Before bulk importing external libraries |
 | Opportunity scoring | Human-readable hypotheses with barriers and adjacent evidence | Quantitative market and workflow model with sourced denominators, confidence intervals and review | Before showing scores or percentages |
-| Jobs | No live job listing yet | Greenhouse/Lever company feeds or another permitted source, with expiry and location normalization | When career signals become a priority |
+| Jobs | Five public Greenhouse boards, hourly checks and two-sync expiry | More verified boards and ATS adapters, location normalization and saved alerts | Before claiming broad labor-market coverage |
+| Coverage priorities | General English-language business and developer sources | Prioritize specific industries, geographies, languages, employers and role levels | Before scaling the source catalog and personalized ranking |
 | Notifications | No email or push in V1 | Self-hosted mail infrastructure and opted-in digest service | After accounts and consent design |
 
-**Recommended sequence:** pick a target user and one deep domain, validate source rights, then add accounts and saved server state. Add embeddings, jobs and a measured gap model only after the corresponding data is reliable.
+**Recommended sequence:** pick a target user and one deep domain, validate source rights, then add accounts and saved server state. Expand job-board coverage with explicit coverage metrics. Add embeddings and a measured gap model only after the corresponding data is reliable.

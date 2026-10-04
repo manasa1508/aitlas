@@ -15,7 +15,9 @@ from app.main import app  # noqa: E402
 from app.models import Item, Source  # noqa: E402
 from app.seed import seed  # noqa: E402
 from app.sources import sync_defaults  # noqa: E402
+from app.sources import DEFAULTS  # noqa: E402
 from sqlalchemy import func, select  # noqa: E402
+import json  # noqa: E402
 
 
 def setup_module():
@@ -66,7 +68,7 @@ def test_empty_and_missing_context():
 
 def test_dynamic_source_scheduling_and_backoff(monkeypatch):
     with SessionLocal() as session:
-        assert sync_defaults(session) == 6
+        assert sync_defaults(session) == len(json.loads(DEFAULTS.read_text()))
         assert sync_defaults(session) == 0
         for source in session.scalars(select(Source)).all():
             source.enabled = source.id == "hacker-news"
@@ -122,3 +124,58 @@ def test_daily_brief_counts_beyond_first_page():
         brief = client.get("/api/overview").json()["brief"]
         assert brief["window"] == "last 24 hours"
         assert brief["count"] == before + 121
+
+
+def test_job_board_expiry_needs_two_complete_misses():
+    import httpx
+
+    jobs = [{"id": 123, "internal_job_id": 456, "title": "Machine Learning Engineer", "absolute_url": "https://job-boards.greenhouse.io/example/jobs/123", "location": {"name": "Remote"}, "first_published": "2026-10-01T00:00:00Z", "content": "Build models"}]
+    def respond(_):
+        return httpx.Response(200, json={"jobs": jobs})
+
+    with SessionLocal() as session, httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        source = upsert_source(session, "test-jobs", "Test jobs", "https://boards-api.greenhouse.io/v1/boards/example/jobs", "greenhouse_jobs")
+        source.options = {"company": "Example AI"}
+        assert ingest.ingest_greenhouse_jobs(session, client, source) == 1
+        session.commit()
+        row = session.scalar(select(Item).where(Item.kind == "job", Item.source_id == source.id))
+        assert row.active and row.details["location"] == "Remote"
+        jobs.clear()
+        ingest.ingest_greenhouse_jobs(session, client, source)
+        session.commit()
+        assert row.active
+        ingest.ingest_greenhouse_jobs(session, client, source)
+        session.commit()
+        assert not row.active
+
+
+def test_trending_model_is_source_labeled():
+    import httpx
+
+    payload = [{"id": "example/model-one", "downloads": 120, "likes": 10, "trendingScore": 99, "pipeline_tag": "text-generation", "tags": ["license:apache-2.0"], "createdAt": "2026-10-01T00:00:00Z"}]
+    with SessionLocal() as session, httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+        source = upsert_source(session, "test-models", "Models", "https://huggingface.co/api/models", "hf_models")
+        assert ingest.ingest_hf_models(session, client, source) == 1
+        session.commit()
+        row = session.scalar(select(Item).where(Item.kind == "model", Item.source_id == source.id))
+        assert row.details["license"] == "apache-2.0"
+        assert row.details["trending_rank"] == 1
+
+
+def test_search_reaches_deep_active_catalog():
+    now = datetime.now(timezone.utc)
+    with SessionLocal() as session:
+        upsert_source(session, "deep-search", "Deep search", "https://example.org/feed", "rss")
+        session.add_all(Item(kind="job", title=f"Atlas Engineer {i}", summary="Develop AI systems", url=f"https://example.org/atlas-job/{i}", source_id="deep-search", published_at=now, tags=["Engineering"], details={"company": "Example", "location": "Remote", "role": "Engineering", "audience": "developer"}, active=True, score=50, title_fingerprint=f"atlas engineer {i}") for i in range(510))
+        session.add(Item(kind="job", title="Research role", summary="Build AI systems", url="https://example.org/together-role", source_id="deep-search", published_at=now, tags=["Research"], details={"company": "Together AI", "location": "Remote", "role": "Research & AI", "audience": "developer"}, active=True, score=50, title_fingerprint="together role"))
+        session.commit()
+    with TestClient(app) as client:
+        data = client.get("/api/search", params={"q": "Atlas", "offset": 500, "limit": 10}).json()
+        assert data["total"] >= 510
+        assert len(data["results"]) == 10
+        assert all(row["type"] == "job" for row in data["results"])
+        assert all(row["kind"] != "job" for row in client.get("/api/items", params={"limit": 100}).json()["items"])
+        assert client.get("/api/items", params={"kind": "job", "role": "Engineering"}).json()["total"] >= 510
+        company_search = client.get("/api/search", params={"q": "Together AI"}).json()
+        assert company_search["total"] == 1
+        assert company_search["results"][0]["url"] == "https://example.org/together-role"

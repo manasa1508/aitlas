@@ -1,8 +1,229 @@
 [
-  {"id":"openai","name":"OpenAI","url":"https://openai.com/news/rss.xml","kind":"rss","interval_minutes":15,"options":{"ai_focused":true}},
-  {"id":"google-ai","name":"Google AI","url":"https://blog.google/innovation-and-ai/technology/ai/rss/","kind":"rss","interval_minutes":15,"options":{"ai_focused":true}},
-  {"id":"github-blog","name":"GitHub Blog","url":"https://github.blog/feed/","kind":"rss","interval_minutes":15,"options":{}},
-  {"id":"arxiv","name":"arXiv","url":"https://export.arxiv.org/api/query","kind":"arxiv","interval_minutes":30,"options":{"categories":["cs.AI","cs.LG","cs.CL"],"max_results":25}},
-  {"id":"hacker-news","name":"Hacker News","url":"https://hn.algolia.com/api/v1/search_by_date","kind":"hacker_news","interval_minutes":5,"options":{"query":"AI","hits_per_page":40}},
-  {"id":"github-repos","name":"GitHub repositories","url":"https://api.github.com/search/repositories","kind":"github_repos","interval_minutes":30,"options":{"query":"topic:machine-learning","days_back":14,"per_page":20}}
+  {
+    "id": "openai",
+    "name": "OpenAI",
+    "url": "https://openai.com/news/rss.xml",
+    "kind": "rss",
+    "interval_minutes": 15,
+    "options": {
+      "ai_focused": true
+    }
+  },
+  {
+    "id": "google-ai",
+    "name": "Google AI",
+    "url": "https://blog.google/innovation-and-ai/technology/ai/rss/",
+    "kind": "rss",
+    "interval_minutes": 15,
+    "options": {
+      "ai_focused": true
+    }
+  },
+  {
+    "id": "github-blog",
+    "name": "GitHub Blog",
+    "url": "https://github.blog/feed/",
+    "kind": "rss",
+    "interval_minutes": 15,
+    "options": {}
+  },
+  {
+    "id": "arxiv",
+    "name": "arXiv",
+    "url": "https://export.arxiv.org/api/query",
+    "kind": "arxiv",
+    "interval_minutes": 30,
+    "options": {
+      "categories": [
+        "cs.AI",
+        "cs.LG",
+        "cs.CL"
+      ],
+      "max_results": 25
+    }
+  },
+  {
+    "id": "hacker-news",
+    "name": "Hacker News",
+    "url": "https://hn.algolia.com/api/v1/search_by_date",
+    "kind": "hacker_news",
+    "interval_minutes": 5,
+    "options": {
+      "query": "AI",
+      "hits_per_page": 40
+    }
+  },
+  {
+    "id": "github-repos",
+    "name": "GitHub repositories",
+    "url": "https://api.github.com/search/repositories",
+    "kind": "github_repos",
+    "interval_minutes": 30,
+    "options": {
+      "query": "topic:machine-learning",
+      "days_back": 14,
+      "per_page": 20
+    }
+  },
+  {
+    "id": "techcrunch-ai",
+    "name": "TechCrunch AI",
+    "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
+    "kind": "rss",
+    "interval_minutes": 15,
+    "options": {
+      "ai_focused": true,
+      "audience": "business"
+    }
+  },
+  {
+    "id": "the-verge-ai",
+    "name": "The Verge AI",
+    "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+    "kind": "rss",
+    "interval_minutes": 15,
+    "options": {
+      "ai_focused": true,
+      "audience": "business"
+    }
+  },
+  {
+    "id": "wired-ai",
+    "name": "WIRED AI",
+    "url": "https://www.wired.com/feed/tag/ai/latest/rss",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "business"
+    }
+  },
+  {
+    "id": "mit-tech-review",
+    "name": "MIT Technology Review",
+    "url": "https://www.technologyreview.com/feed/",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "audience": "business"
+    }
+  },
+  {
+    "id": "huggingface-blog",
+    "name": "Hugging Face Blog",
+    "url": "https://huggingface.co/blog/feed.xml",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "developer"
+    }
+  },
+  {
+    "id": "pytorch-blog",
+    "name": "PyTorch Blog",
+    "url": "https://pytorch.org/blog/feed/",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "developer"
+    }
+  },
+  {
+    "id": "github-ai-blog",
+    "name": "GitHub AI & ML",
+    "url": "https://github.blog/ai-and-ml/feed/",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "developer"
+    }
+  },
+  {
+    "id": "anthropic-jobs",
+    "name": "Anthropic careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/anthropic/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 60,
+    "options": {
+      "company": "Anthropic"
+    }
+  },
+  {
+    "id": "scale-ai-jobs",
+    "name": "Scale AI careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/scaleai/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 60,
+    "options": {
+      "company": "Scale AI"
+    }
+  },
+  {
+    "id": "databricks-jobs",
+    "name": "Databricks careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/databricks/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 60,
+    "options": {
+      "company": "Databricks"
+    }
+  },
+  {
+    "id": "huggingface-models",
+    "name": "Hugging Face trending models",
+    "url": "https://huggingface.co/api/models",
+    "kind": "hf_models",
+    "interval_minutes": 30,
+    "options": {
+      "limit": 30,
+      "audience": "developer"
+    }
+  },
+  {
+    "id": "github-llm-repos",
+    "name": "GitHub LLM repositories",
+    "url": "https://api.github.com/search/repositories",
+    "kind": "github_repos",
+    "interval_minutes": 30,
+    "options": {
+      "query": "topic:llm",
+      "days_back": 14,
+      "per_page": 20
+    }
+  },
+  {
+    "id": "github-generative-ai-repos",
+    "name": "GitHub generative AI repositories",
+    "url": "https://api.github.com/search/repositories",
+    "kind": "github_repos",
+    "interval_minutes": 30,
+    "options": {
+      "query": "topic:generative-ai",
+      "days_back": 14,
+      "per_page": 20
+    }
+  },
+  {
+    "id": "together-ai-jobs",
+    "name": "Together AI careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/togetherai/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 60,
+    "options": {
+      "company": "Together AI"
+    }
+  },
+  {
+    "id": "xai-jobs",
+    "name": "xAI careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/xai/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 60,
+    "options": {
+      "company": "xAI"
+    }
+  }
 ]

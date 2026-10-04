@@ -6,15 +6,16 @@ AItlas connects five kinds of evidence: current developments, foundational knowl
 
 ### Current user journeys
 
-1. **Morning scan:** open the overview, read the indexed coverage summary, inspect news/papers/repos, filter the signal feed, and open original sources.
+1. **Morning scan:** open the overview, read the indexed coverage summary, switch between business and developer signals, inspect news/papers/repos/models, and open original sources.
 2. **Understand context:** open a signal's historical context panel, follow cited papers, and explore the timeline.
 3. **Research a deployment:** inspect a company profile and the corresponding use case, including how the outcome was reported.
 4. **Explore a possibility:** open an opportunity hypothesis, inspect its adjacent evidence and barriers, then conduct separate validation.
 5. **Ask a question:** retrieve relevant indexed records; use extractive answers by default or optional local model synthesis with numbered citations.
+6. **Track the market:** search active AI-company job boards by role, employer and location; compare live hiring counts and news mentions with reviewed company evidence.
 
 ### What V1 does not claim
 
-No comprehensive company stack discovery, jobs feed, paper lineage graph, verified adoption scores, measured market size, 24-hour GitHub star velocity, personalized email digest, or statistically valid opportunity penetration metric is implemented. Those require additional data rights, identity, review and measurement work. They are not silently simulated in the UI.
+No comprehensive company stack discovery, complete global job market coverage, paper lineage graph, verified adoption scores, measured market size, 24-hour GitHub star velocity, personalized email digest, or statistically valid opportunity penetration metric is implemented. Those require additional data rights, identity, review and measurement work. They are not silently simulated in the UI.
 
 ## System diagram
 
@@ -24,6 +25,8 @@ flowchart LR
   AR[arXiv API] --> W
   HN[HN search API] --> W
   GH[GitHub API] --> W
+  HF[Hugging Face public API] --> W
+  ATS[Public Greenhouse job boards] --> W
   W --> D[(SQLite local / PostgreSQL deploy)]
   C[Reviewed starter corpus] --> B[Bootstrap and Alembic]
   B --> D
@@ -34,7 +37,7 @@ flowchart LR
   L --> A
 ```
 
-The API never fetches arbitrary user-provided URLs. The worker uses fixed source endpoints and runs outside request processing. Nginx serves static frontend assets and proxies `/api` in the Compose setup.
+The API never fetches arbitrary user-provided URLs. An operator configures the source registry; API adapters are restricted to their expected public hosts. The worker runs outside request processing. Nginx serves static frontend assets and proxies `/api` in the Compose setup.
 
 ## Technology choices
 
@@ -53,7 +56,7 @@ Everything in the application runtime is open source. Public feeds and publisher
 ## Data model and provenance
 
 - `sources`: operator-configurable endpoint, adapter, options, enabled flag, poll interval, next due time, failure count, last successful sync, error and count.
-- `items`: normalized URL, kind, title, short summary, source, publication/discovery time, tags and score.
+- `items`: normalized URL, kind, title, short summary, source, publication/discovery time, tags, score, structured source metadata, active status and last-seen time. Job rows include company, location and role; model rows include source-supplied rank, task and license when present.
 - `knowledge`: curated historical milestone, year, topic, paper URL, and related IDs.
 - `companies` and `evidence`: a profile plus individual cited claims. A profile without cited evidence should not be labeled as having an AI maturity tier.
 - `use_cases`: deployment summary, reported outcome, domain, maturity label and evidence URL.
@@ -70,12 +73,14 @@ Every displayed current item has a source URL. Case-study outcomes are explicitl
 4. Apply simple relevance tags and a transparent heuristic score. Display recency separately. No hidden claim of editorial review or true trend velocity.
 5. Commit each source independently; a repeated run is idempotent for existing canonical links.
 6. Track refresh timestamps and show empty states instead of manufacturing content when sources fail.
+7. For each successful complete Greenhouse board response, update current roles and mark a missing role inactive after two consecutive absences. Failed board requests never expire jobs.
+8. Preserve source-supplied model trending rank. A GitHub repository's star change is compared only with its prior sync; it is not labeled 24-hour velocity.
 
 Source APIs can throttle or change formats. A production operator should provide a GitHub token and monitor error trends. The worker stores each source's next poll time and backs off after failures. PostgreSQL advisory locking prevents two worker replicas from running the same cycle. At larger scale, a durable queue with per-source jobs and dead-letter handling should replace the single polling loop.
 
 ## Retrieval and answer safety
 
-Current search is SQL filtering plus token-overlap ranking over curated records and the most recent 500 live items. This makes behavior easy to inspect and avoids downloading an embedding model just to search a small corpus. The answer endpoint returns explicit no-match results. Extractive mode reports the closest indexed snippets. If Ollama is configured, the prompt instructs the local model to use numbered snippets only, and the API accepts a generated answer only if its citation numbers refer to retrieved records. This **does not prove every generated claim is correct**; the UI asks readers to review linked sources.
+Global search paginates through the full active catalog, including jobs, models and reviewed records, using database text filters. Q&A selects up to 500 matching live candidates and ranks them with token overlap alongside reviewed content. This makes behavior inspectable without an embedding model, though SQL `LIKE` filters need full-text indexes as the corpus grows. The answer endpoint returns explicit no-match results. Extractive mode reports the closest indexed snippets. If Ollama is configured, the prompt instructs the local model to use numbered snippets only, and the API accepts a generated answer only if its citation numbers refer to retrieved records. This **does not prove every generated claim is correct**; the UI asks readers to review linked sources.
 
 At larger scale: add PostgreSQL `tsvector`/GIN for keyword retrieval, `pgvector` HNSW for semantic candidates, a cross-encoder reranker, and a claim-to-citation validation pass. Keep source snapshots and retrieval logs so answers can be audited. Do not import full papers or articles without appropriate rights.
 
@@ -98,6 +103,6 @@ For the first thousands of records, one API, one worker and PostgreSQL are suffi
 1. **Depth:** choose one domain, import permitted primary papers, add entity resolution and reviewed links between concepts, papers, models and people.
 2. **Accounts:** add OIDC, organization tenancy, consent, server-side saves/follows, account export/deletion, and per-user feed preferences.
 3. **Search:** add hybrid retrieval only after an evaluation set of real questions shows a relevance improvement.
-4. **Company and career intelligence:** add licensed or permitted company and job sources, observed timestamps, evidence freshness, and conflict resolution.
+4. **Company and career intelligence:** expand verified public boards and licensed sources, normalize locations, measure coverage, and add evidence freshness and conflict resolution.
 5. **Opportunity analysis:** build a workflow taxonomy, sourced denominator estimates and explicit confidence intervals; then validate with domain experts before ranking markets.
 6. **Editorial quality:** add review tools, corrections, source takedown handling and automated regression evaluations for grounded answers.

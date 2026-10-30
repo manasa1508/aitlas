@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from .db import settings, utcnow
 from .models import Item, JobRun, Source
+from .jobs import ai_related, target_location
 
 LOG = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ def relevant(title: str, summary: str, source: Source) -> bool:
     if source.kind in {"arxiv", "github_repos"} or (source.options or {}).get("ai_focused"):
         return True
     text = f"{title} {summary}".lower()
-    return any(term in text for term in AI_TERMS)
+    return bool(re.search(r"\b(?:ai|ml|llms?|rag)\b", text)) or any(term in text for term in AI_TERMS - {"rag", "llm"})
 
 
 def upsert_source(session: Session, id_: str, name: str, url: str, kind: str) -> Source:
@@ -108,17 +109,22 @@ def upsert_source(session: Session, id_: str, name: str, url: str, kind: str) ->
 def insert_item(session: Session, *, kind: str, title: str, summary: str, url: str, source_id: str, published_at: datetime, details: dict | None = None) -> bool:
     url = canonical_url(url)
     title = clean_text(title, 500)
-    summary = clean_text(summary)
+    summary = clean_text(summary, 3000 if kind == "paper" else 1500 if kind == "repo" else 700)
     source = session.get(Source, source_id)
     if not source or not url or len(title) < 8 or not relevant(title, summary, source):
         return False
-    if session.scalar(select(Item.id).where(Item.url == url)):
+    existing = session.scalar(select(Item).where(Item.url == url))
+    if existing:
         return False
     fp = fingerprint(title)
     cutoff = published_at - timedelta(days=3)
     candidates = session.scalars(select(Item).where(Item.published_at >= cutoff, Item.published_at <= published_at + timedelta(days=3)).order_by(Item.discovered_at.desc()).limit(300)).all()
-    if any(SequenceMatcher(None, fp, candidate.title_fingerprint).ratio() > 0.91 for candidate in candidates):
-        return False
+    for candidate in candidates:
+        if SequenceMatcher(None, fp, candidate.title_fingerprint).ratio() > 0.91:
+            related = list((candidate.details or {}).get("similar_coverage", []))
+            if source_id != candidate.source_id and url not in {row["url"] for row in related} and len(related) < 6:
+                candidate.details = {**(candidate.details or {}), "similar_coverage": related + [{"title": title, "url": url, "source": source.name}]}
+            return False
     tags = classify(f"{title} {summary}")
     source_bonus = 20 if source.kind == "arxiv" or (source.options or {}).get("ai_focused") else 10
     score = min(100.0, 45 + source_bonus + (10 if "Research" in tags else 0) + (8 if "Open source" in tags else 0))
@@ -137,7 +143,7 @@ def ingest_feed(session: Session, client: httpx.Client, source: Source) -> int:
     for entry in parsed.entries[:40]:
         title = entry.get("title", "")
         summary = entry.get("summary", entry.get("description", ""))
-        if insert_item(session, kind="news", title=title, summary=summary, url=entry.get("link", ""), source_id=source.id, published_at=parse_date(entry.get("published", entry.get("updated")))):
+        if insert_item(session, kind="news", title=title, summary=summary, url=entry.get("link", ""), source_id=source.id, published_at=parse_date(entry.get("published", entry.get("updated"))), details={"source_type": (source.options or {}).get("source_type", "publisher"), "category": (source.options or {}).get("category", "news")}):
             count += 1
     return count
 
@@ -160,13 +166,23 @@ def ingest_hn(session: Session, client: httpx.Client, source: Source) -> int:
     response = get_with_retry(client, source.url, params={"query": str(options.get("query", "AI")), "tags": "story", "hitsPerPage": limit})
     response.raise_for_status()
     data = response.json()
-    return sum(insert_item(session, kind="news", title=e.get("title") or "", summary=e.get("story_text") or "Discussion on Hacker News", url=e.get("url") or f"https://news.ycombinator.com/item?id={e.get('objectID')}", source_id=source.id, published_at=parse_date(e.get("created_at"))) for e in data.get("hits", [])[:limit])
+    count = 0
+    for entry in data.get("hits", [])[:limit]:
+        url = canonical_url(entry.get("url") or f"https://news.ycombinator.com/item?id={entry.get('objectID')}")
+        details = {"points": entry.get("points", 0), "comments": entry.get("num_comments", 0), "discussion_url": f"https://news.ycombinator.com/item?id={entry.get('objectID')}"}
+        existing = session.scalar(select(Item).where(Item.url == url))
+        if existing:
+            existing.details = {**(existing.details or {}), **details}
+        else:
+            count += insert_item(session, kind="news", title=entry.get("title") or "", summary=entry.get("story_text") or "Discussion on Hacker News", url=url or "", source_id=source.id, published_at=parse_date(entry.get("created_at")), details=details)
+    return count
 
 
 def ingest_github(session: Session, client: httpx.Client, source: Source) -> int:
     options = source.options or {}
     since = (utcnow() - timedelta(days=min(90, int(options.get("days_back", 14))))).date().isoformat()
-    response = get_with_retry(client, source.url, params={"q": f"{options.get('query', 'topic:machine-learning')} created:>={since}", "sort": "stars", "order": "desc", "per_page": min(100, int(options.get("per_page", 20)))})
+    date_field = "pushed" if options.get("date_field") == "pushed" else "created"
+    response = get_with_retry(client, source.url, params={"q": f"{options.get('query', 'topic:machine-learning')} {date_field}:>={since}", "sort": "stars", "order": "desc", "per_page": min(100, int(options.get("per_page", 20)))})
     response.raise_for_status()
     data = response.json()
     count = 0
@@ -181,13 +197,14 @@ def ingest_github(session: Session, client: httpx.Client, source: Source) -> int
         if existing and existing.kind == "repo":
             previous = (existing.details or {}).get("stars")
             delta = stars - previous if isinstance(previous, int) else None
-            existing.details = {"audience": "developer", "stars": stars, "stars_delta_since_last_sync": delta, "language": repo.get("language"), "license": (repo.get("license") or {}).get("spdx_id"), "last_observed_at": utcnow().isoformat()}
+            existing.details = {"audience": "developer", "stars": stars, "stars_delta_since_last_sync": delta, "language": repo.get("language"), "license": (repo.get("license") or {}).get("spdx_id"), "created_at": repo.get("created_at"), "pushed_at": repo.get("pushed_at"), "last_observed_at": utcnow().isoformat()}
             existing.title = title
             existing.summary = summary
+            existing.published_at = parse_date(repo.get("pushed_at") or repo.get("created_at"))
             existing.last_seen_at = utcnow()
             existing.score = min(100.0, 55 + min(35, max(0, delta or 0) * 2))
         elif not existing:
-            count += insert_item(session, kind="repo", title=title, summary=summary, url=url, source_id=source.id, published_at=parse_date(repo.get("created_at")), details={"audience": "developer", "stars": stars, "stars_delta_since_last_sync": None, "language": repo.get("language"), "license": (repo.get("license") or {}).get("spdx_id"), "last_observed_at": utcnow().isoformat()})
+            count += insert_item(session, kind="repo", title=title, summary=summary, url=url, source_id=source.id, published_at=parse_date(repo.get("pushed_at") or repo.get("created_at")), details={"audience": "developer", "stars": stars, "stars_delta_since_last_sync": None, "language": repo.get("language"), "license": (repo.get("license") or {}).get("spdx_id"), "created_at": repo.get("created_at"), "pushed_at": repo.get("pushed_at"), "last_observed_at": utcnow().isoformat()})
     return count
 
 
@@ -202,6 +219,31 @@ def job_role(title: str) -> str:
     return "Business & operations"
 
 
+def ingest_hf_papers(session: Session, client: httpx.Client, source: Source) -> int:
+    response = get_with_retry(client, source.url, params={"limit": 50})
+    rows = response.json()
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise ValueError("Invalid Daily Papers response")
+    added = 0
+    for entry in rows[:50]:
+        paper = entry.get("paper") or {}
+        paper_id = str(paper.get("id") or "")
+        if not re.fullmatch(r"\d{4}\.\d{4,5}", paper_id):
+            continue
+        url = f"https://arxiv.org/abs/{paper_id}"
+        details = {"audience": "developer", "upvotes": int(paper.get("upvotes") or 0), "attention_source": f"https://huggingface.co/papers/{paper_id}", "attention_checked_at": utcnow().isoformat(), "github_url": canonical_url(paper.get("githubRepo") or ""), "project_url": canonical_url(paper.get("projectPage") or ""), "source_type": "research", "category": "research"}
+        existing = session.scalar(select(Item).where(Item.url == url))
+        if not existing:
+            existing = session.scalar(select(Item).where(Item.kind == "paper", Item.url.in_([f"{scheme}://arxiv.org/abs/{paper_id}{version}" for scheme in ("http", "https") for version in ("", "v1", "v2", "v3")])).limit(1))
+        if existing:
+            existing.url = url
+            existing.details = {**(existing.details or {}), **details}
+            existing.last_seen_at = utcnow()
+        else:
+            added += insert_item(session, kind="paper", title=paper.get("title") or entry.get("title") or "", summary=paper.get("summary") or entry.get("summary") or "", url=url, source_id=source.id, published_at=parse_date(entry.get("publishedAt") or paper.get("publishedAt")), details=details)
+    return added
+
+
 def ingest_greenhouse_jobs(session: Session, client: httpx.Client, source: Source) -> int:
     response = get_with_retry(client, source.url, params={"content": "true"})
     response.raise_for_status()
@@ -209,6 +251,10 @@ def ingest_greenhouse_jobs(session: Session, client: httpx.Client, source: Sourc
     jobs = payload.get("jobs") if isinstance(payload, dict) else None
     if not isinstance(jobs, list) or len(jobs) > 2000:
         raise ValueError("Greenhouse returned an invalid or oversized jobs list")
+    return sync_job_snapshot(session, source, jobs)
+
+
+def sync_job_snapshot(session: Session, source: Source, jobs: list[dict]) -> int:
     existing = {row.url: row for row in session.scalars(select(Item).where(Item.source_id == source.id, Item.kind == "job")).all()}
     seen: set[str] = set()
     now = utcnow()
@@ -225,9 +271,12 @@ def ingest_greenhouse_jobs(session: Session, client: httpx.Client, source: Sourc
             continue
         seen.add(url)
         location = clean_text((job.get("location") or {}).get("name") or "Location not specified", 160)
+        if (source.options or {}).get("target_cities_only") and not target_location(location):
+            seen.discard(url)
+            continue
         department = ", ".join(clean_text(d.get("name") or "", 80) for d in (job.get("departments") or [])[:3])
         description = clean_text(job.get("content") or "", 700)
-        details = {"audience": "developer" if job_role(title) in {"Research & AI", "Engineering"} else "business", "company": company, "location": location, "department": department, "role": job_role(title), "updated_at": job.get("updated_at"), "misses": 0}
+        details = {"audience": "developer" if job_role(title) in {"Research & AI", "Engineering"} else "business", "company": company, "location": location, "department": department, "role": job_role(title), "ai_related": ai_related(title, department), "updated_at": job.get("updated_at"), "misses": 0}
         if url in existing:
             row = existing[url]
             row.title = title
@@ -248,21 +297,61 @@ def ingest_greenhouse_jobs(session: Session, client: httpx.Client, source: Sourc
     return added
 
 
+def ingest_smartrecruiters(session: Session, client: httpx.Client, source: Source) -> int:
+    """Read only PUBLIC postings, exhausting pagination before expiring jobs."""
+    jobs, offset, seen_ids, expected_total = [], 0, set(), None
+    while True:
+        response = get_with_retry(client, source.url, params={"limit": 100, "offset": offset, "country": "in", "destination": "PUBLIC"})
+        data = response.json()
+        page, total = data.get("content"), data.get("totalFound")
+        if not isinstance(page, list) or not isinstance(total, int) or total < 0 or total > 5000:
+            raise ValueError("Invalid or oversized public postings response")
+        if expected_total is not None and total != expected_total:
+            raise ValueError("Postings changed during pagination; retry before expiring jobs")
+        expected_total = total
+        if not page and offset < total:
+            raise ValueError("Incomplete public postings response; existing jobs retained")
+        for job in page:
+            if not isinstance(job, dict) or not job.get("id") or job["id"] in seen_ids:
+                raise ValueError("Malformed or repeated page; existing jobs retained")
+            seen_ids.add(job["id"])
+        jobs.extend(page)
+        offset += len(page)
+        if offset >= total:
+            break
+    # Reuse complete-snapshot expiry and normalization from the Greenhouse adapter.
+    normalized = []
+    company_id = source.url.split("/companies/", 1)[1].split("/", 1)[0]
+    for job in jobs:
+        location = job.get("location") or {}
+        if str(location.get("country", "")).lower() != "in":
+            continue
+        normalized.append({"internal_job_id": job["id"], "title": job.get("name"),
+            "absolute_url": f"https://jobs.smartrecruiters.com/{company_id}/{job['id']}",
+            "location": {"name": location.get("fullLocation") or f"{location.get('city', '')}, India"},
+            "first_published": job.get("releasedDate"), "departments": [{"name": (job.get("department") or {}).get("label", "")}],
+            "content": f"{job.get('name', '')} · {(job.get('function') or {}).get('label', '')} · {(job.get('experienceLevel') or {}).get('label', '')}. View the official posting for full requirements."})
+    return sync_job_snapshot(session, source, normalized)
+
+
 def ingest_hf_models(session: Session, client: httpx.Client, source: Source) -> int:
     limit = min(100, max(1, int((source.options or {}).get("limit", 30))))
     response = get_with_retry(client, source.url, params={"sort": "trendingScore", "direction": "-1", "limit": limit})
     response.raise_for_status()
     models = response.json()
-    if not isinstance(models, list):
+    if not isinstance(models, list) or not models or any(not isinstance(model, dict) for model in models):
         raise ValueError("Hugging Face returned an invalid model list")
     count = 0
+    seen = set()
+    checked_at = utcnow().isoformat()
     for rank, model in enumerate(models[:limit], start=1):
         model_id = model.get("id") or model.get("modelId")
         if not isinstance(model_id, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", model_id):
             continue
         url = f"https://huggingface.co/{model_id}"
+        seen.add(url)
         license_tag = next((tag.removeprefix("license:") for tag in model.get("tags", []) if isinstance(tag, str) and tag.startswith("license:")), None)
-        details = {"audience": "developer", "task": model.get("pipeline_tag"), "downloads": model.get("downloads"), "likes": model.get("likes"), "trending_score": model.get("trendingScore"), "trending_rank": rank, "license": license_tag}
+        details = {"audience": "developer", "task": model.get("pipeline_tag"), "downloads": model.get("downloads"), "likes": model.get("likes"), "trending_score": model.get("trendingScore"), "trending_rank": rank, "trending_checked_at": checked_at, "license": license_tag}
         summary = f"Trending model on Hugging Face · {model.get('pipeline_tag') or 'task not specified'} · {int(model.get('downloads') or 0):,} downloads"
         existing = session.scalar(select(Item).where(Item.url == url))
         if existing and existing.kind == "model":
@@ -273,6 +362,12 @@ def ingest_hf_models(session: Session, client: httpx.Client, source: Source) -> 
         elif not existing:
             session.add(Item(kind="model", title=model_id, summary=summary, url=url, source_id=source.id, published_at=parse_date(model.get("createdAt")), tags=["Models"], details=details, active=True, last_seen_at=utcnow(), score=max(50.0, 100.0 - rank), title_fingerprint=fingerprint(model_id)))
             count += 1
+    if not seen:
+        raise ValueError("Hugging Face returned no usable model IDs")
+    for row in session.scalars(select(Item).where(Item.kind == "model", Item.source_id == source.id)).all():
+        if row.url not in seen:
+            row.details = {**(row.details or {}), "trending_rank": None, "trending_score": None, "trending_checked_at": checked_at}
+            row.score = 0
     session.flush()
     return count
 
@@ -284,7 +379,15 @@ def get_with_retry(client: httpx.Client, url: str, *, params: dict | None = None
     headers = {"Authorization": f"Bearer {settings.github_token}"} if settings.github_token and parsed.scheme == "https" and parsed.hostname == "api.github.com" else None
     for attempt in range(2):
         try:
-            response = client.get(url, params=params, headers=headers)
+            with client.stream("GET", url, params=params, headers=headers) as streamed:
+                chunks, size = [], 0
+                for chunk in streamed.iter_bytes():
+                    size += len(chunk)
+                    if size > 32 * 1024 * 1024:
+                        raise ValueError("Source response exceeded 32 MiB")
+                    chunks.append(chunk)
+                decoded_headers = {key: value for key, value in streamed.headers.items() if key.lower() not in {"content-encoding", "content-length", "transfer-encoding"}}
+                response = httpx.Response(streamed.status_code, content=b"".join(chunks), headers=decoded_headers, request=streamed.request)
             if response.status_code not in {429, 500, 502, 503, 504} or attempt:
                 response.raise_for_status()
                 return response
@@ -314,7 +417,7 @@ def run_ingestion(session: Session, *, force: bool = False) -> JobRun | None:
     run = JobRun(status="running", errors=[])
     session.add(run)
     session.commit()
-    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "hf_models": ingest_hf_models}
+    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "smartrecruiters": ingest_smartrecruiters, "hf_models": ingest_hf_models, "hf_papers": ingest_hf_papers}
     headers = {"User-Agent": settings.user_agent, "Accept": "application/json, application/atom+xml, application/rss+xml, */*"}
     errors: list[str] = []
     inserted = 0

@@ -1,0 +1,35 @@
+{
+  "topics": [
+    {"id":"agents","name":"Agents and coding","terms":["agentic","agent","coding","copilot","claude code"]},
+    {"id":"reasoning","name":"Reasoning and learning","terms":["reasoning","reinforcement learning","distillation","continual learning","training"]},
+    {"id":"open-models","name":"Open models","terms":["open-weight","open source","open-source","llama","qwen","mistral","gemma","nemotron"]},
+    {"id":"multimodal","name":"Multimodal and media","terms":["multimodal","speech","video generation","image generation","vision","audio"]},
+    {"id":"infrastructure","name":"Inference and hardware","terms":["inference","gpu","nvidia","amd","accelerator","quantization","datacenter","data center"]},
+    {"id":"science","name":"Science and robotics","terms":["robot","discovery","protein","drug","scientific","biology","simulation"]},
+    {"id":"business","name":"AI business and policy","terms":["funding","acquisition","revenue","partnership","regulation","policy","earnings","shares"]}
+  ],
+  "market_watchlist": [
+    {"symbol":"NVDA","name":"NVIDIA","aliases":["nvidia","nemotron"]},
+    {"symbol":"MSFT","name":"Microsoft","aliases":["microsoft","azure","copilot"]},
+    {"symbol":"GOOGL","name":"Alphabet","aliases":["google","alphabet","deepmind","gemini"]},
+    {"symbol":"AMZN","name":"Amazon","aliases":["amazon","aws","bedrock"]},
+    {"symbol":"META","name":"Meta","aliases":["meta","llama"]},
+    {"symbol":"AMD","name":"AMD","aliases":["amd","advanced micro devices"]},
+    {"symbol":"TSM","name":"TSMC","aliases":["tsmc","taiwan semiconductor"]},
+    {"symbol":"AVGO","name":"Broadcom","aliases":["broadcom"]}
+  ],
+  "career_links": [
+    {"name":"Microsoft","category":"Technology multinational","url":"https://careers.microsoft.com/v2/global/en/locations/india.html"},
+    {"name":"Google","category":"Technology multinational","url":"https://www.google.com/about/careers/applications/jobs/results/?location=India"},
+    {"name":"Amazon / AWS","category":"Technology multinational","url":"https://www.amazon.jobs/en/search?country=IND"},
+    {"name":"NVIDIA","category":"Technology multinational","url":"https://www.nvidia.com/en-us/about-nvidia/careers/"},
+    {"name":"Salesforce","category":"Technology multinational","url":"https://careers.salesforce.com/en/locations/india/"},
+    {"name":"Oracle","category":"Technology multinational","url":"https://www.oracle.com/in/careers/"},
+    {"name":"SAP","category":"Technology multinational","url":"https://jobs.sap.com/"},
+    {"name":"Qualcomm","category":"Technology multinational","url":"https://careers.qualcomm.com/"},
+    {"name":"JPMorgan Chase","category":"Financial services / GCC watchlist","url":"https://careers.jpmorgan.com/global/en/about-us/locations/india"},
+    {"name":"Goldman Sachs","category":"Financial services / GCC watchlist","url":"https://www.goldmansachs.com/careers/"},
+    {"name":"Wells Fargo","category":"Financial services / GCC watchlist","url":"https://www.wellsfargojobs.com/"},
+    {"name":"Walmart Global Tech","category":"Retail technology / GCC watchlist","url":"https://tech.walmart.com/content/walmart-global-tech/en_us/careers.html"}
+  ]
+}

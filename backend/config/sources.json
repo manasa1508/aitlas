@@ -6,7 +6,8 @@
     "kind": "rss",
     "interval_minutes": 15,
     "options": {
-      "ai_focused": true
+      "ai_focused": true,
+      "source_type": "primary"
     }
   },
   {
@@ -16,7 +17,8 @@
     "kind": "rss",
     "interval_minutes": 15,
     "options": {
-      "ai_focused": true
+      "ai_focused": true,
+      "source_type": "primary"
     }
   },
   {
@@ -116,7 +118,8 @@
     "interval_minutes": 30,
     "options": {
       "ai_focused": true,
-      "audience": "developer"
+      "audience": "developer",
+      "source_type": "primary"
     }
   },
   {
@@ -127,7 +130,8 @@
     "interval_minutes": 30,
     "options": {
       "ai_focused": true,
-      "audience": "developer"
+      "audience": "developer",
+      "source_type": "primary"
     }
   },
   {
@@ -138,7 +142,8 @@
     "interval_minutes": 30,
     "options": {
       "ai_focused": true,
-      "audience": "developer"
+      "audience": "developer",
+      "source_type": "primary"
     }
   },
   {
@@ -224,6 +229,289 @@
     "interval_minutes": 60,
     "options": {
       "company": "xAI"
+    }
+  },
+  {
+    "id": "deepmind",
+    "name": "Google DeepMind",
+    "url": "https://deepmind.google/blog/rss.xml",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "developer",
+      "source_type": "primary",
+      "category": "research"
+    }
+  },
+  {
+    "id": "google-research",
+    "name": "Google Research",
+    "url": "https://research.google/blog/rss/",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "developer",
+      "source_type": "primary",
+      "category": "research"
+    }
+  },
+  {
+    "id": "microsoft-research",
+    "name": "Microsoft Research",
+    "url": "https://www.microsoft.com/en-us/research/feed/",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "developer",
+      "source_type": "primary",
+      "category": "research"
+    }
+  },
+  {
+    "id": "nvidia-developer",
+    "name": "NVIDIA Developer",
+    "url": "https://developer.nvidia.com/blog/feed/",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "developer",
+      "source_type": "primary",
+      "category": "developer"
+    }
+  },
+  {
+    "id": "mit-ai",
+    "name": "MIT AI Research",
+    "url": "https://news.mit.edu/rss/topic/artificial-intelligence2",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "developer",
+      "source_type": "primary",
+      "category": "research"
+    }
+  },
+  {
+    "id": "meta-engineering",
+    "name": "Meta Engineering AI",
+    "url": "https://engineering.fb.com/category/ml-applications/feed/",
+    "kind": "rss",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "developer",
+      "source_type": "primary",
+      "category": "developer"
+    }
+  },
+  {
+    "id": "github-active-artificial-intelligence",
+    "name": "GitHub active artificial-intelligence",
+    "url": "https://api.github.com/search/repositories",
+    "kind": "github_repos",
+    "interval_minutes": 60,
+    "options": {
+      "query": "topic:artificial-intelligence stars:>100",
+      "date_field": "pushed",
+      "days_back": 7,
+      "per_page": 20
+    }
+  },
+  {
+    "id": "github-active-ai-agents",
+    "name": "GitHub active ai-agents",
+    "url": "https://api.github.com/search/repositories",
+    "kind": "github_repos",
+    "interval_minutes": 60,
+    "options": {
+      "query": "topic:ai-agents stars:>100",
+      "date_field": "pushed",
+      "days_back": 7,
+      "per_page": 20
+    }
+  },
+  {
+    "id": "github-active-inference",
+    "name": "GitHub active inference",
+    "url": "https://api.github.com/search/repositories",
+    "kind": "github_repos",
+    "interval_minutes": 60,
+    "options": {
+      "query": "topic:inference stars:>100",
+      "date_field": "pushed",
+      "days_back": 7,
+      "per_page": 20
+    }
+  },
+  {
+    "id": "rubrik-india-jobs",
+    "name": "Rubrik India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/rubrik/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Rubrik",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "mongodb-india-jobs",
+    "name": "MongoDB India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/mongodb/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "MongoDB",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "stripe-india-jobs",
+    "name": "Stripe India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/stripe/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Stripe",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "okta-india-jobs",
+    "name": "Okta India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/okta/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Okta",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "zscaler-india-jobs",
+    "name": "Zscaler India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/zscaler/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Zscaler",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "netskope-india-jobs",
+    "name": "Netskope India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/netskope/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Netskope",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "druva-india-jobs",
+    "name": "Druva India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/druva/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Druva",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "airbnb-india-jobs",
+    "name": "Airbnb India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/airbnb/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Airbnb",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "datadog-india-jobs",
+    "name": "Datadog India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/datadog/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Datadog",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "purestorage-india-jobs",
+    "name": "Pure Storage India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/purestorage/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Pure Storage",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "servicenow-india-jobs",
+    "name": "ServiceNow India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/ServiceNow/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "ServiceNow",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "freshworks-india-jobs",
+    "name": "Freshworks India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/Freshworks/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Freshworks",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "boschgroup-india-jobs",
+    "name": "Bosch India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/BoschGroup/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Bosch",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "nielseniq-india-jobs",
+    "name": "NielsenIQ India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/NielsenIQ/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "NielsenIQ",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "huggingface-papers",
+    "name": "Hugging Face Daily Papers",
+    "url": "https://huggingface.co/api/daily_papers",
+    "kind": "hf_papers",
+    "interval_minutes": 30,
+    "options": {
+      "ai_focused": true,
+      "audience": "developer",
+      "source_type": "research"
     }
   }
 ]

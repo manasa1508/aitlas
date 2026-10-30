@@ -12,8 +12,8 @@ from .db import SessionLocal
 from .models import Source
 
 DEFAULTS = Path(__file__).resolve().parents[1] / "config" / "sources.json"
-KINDS = {"rss", "arxiv", "hacker_news", "github_repos", "greenhouse_jobs", "hf_models"}
-API_HOSTS = {"arxiv": "export.arxiv.org", "hacker_news": "hn.algolia.com", "github_repos": "api.github.com", "greenhouse_jobs": "boards-api.greenhouse.io", "hf_models": "huggingface.co"}
+KINDS = {"rss", "arxiv", "hacker_news", "github_repos", "greenhouse_jobs", "smartrecruiters", "hf_models", "hf_papers"}
+API_HOSTS = {"arxiv": "export.arxiv.org", "hacker_news": "hn.algolia.com", "github_repos": "api.github.com", "greenhouse_jobs": "boards-api.greenhouse.io", "smartrecruiters": "api.smartrecruiters.com", "hf_models": "huggingface.co", "hf_papers": "huggingface.co"}
 
 
 def validate_url(url: str) -> str:
@@ -33,6 +33,10 @@ def validate_source(kind: str, url: str, interval: int, options: dict) -> None:
         raise ValueError("Greenhouse source must be a public board jobs endpoint")
     if kind == "hf_models" and urlparse(url).path != "/api/models":
         raise ValueError("Hugging Face source must use the public model listing endpoint")
+    if kind == "hf_papers" and urlparse(url).path != "/api/daily_papers":
+        raise ValueError("Daily Papers source must use the public listing endpoint")
+    if kind == "smartrecruiters" and not re.fullmatch(r"/v1/companies/[a-zA-Z0-9_-]+/postings", urlparse(url).path):
+        raise ValueError("SmartRecruiters source must use a public company postings endpoint")
 
 
 def sync_defaults(session: Session) -> int:

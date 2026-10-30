@@ -179,3 +179,144 @@ def test_search_reaches_deep_active_catalog():
         company_search = client.get("/api/search", params={"q": "Together AI"}).json()
         assert company_search["total"] == 1
         assert company_search["results"][0]["url"] == "https://example.org/together-role"
+
+
+def test_latest_answer_respects_time_and_excludes_jobs():
+    now = datetime.now(timezone.utc)
+    with SessionLocal() as session:
+        source = upsert_source(session, "recency", "Recency source", "https://example.org/recent", "rss")
+        source.last_success_at = now
+        for key, kind, age, title in [("new", "news", 1, "Recencyprobe AI release"), ("old", "news", 240, "Recencyprobe latest AI news today"), ("job", "job", 0, "Recencyprobe AI Engineer")]:
+            session.add(Item(kind=kind, title=title, summary="Recencyprobe AI", url=f"https://example.org/recency/{key}", source_id=source.id, published_at=now-timedelta(hours=age), tags=["AI"], score=80, title_fingerprint=key))
+        session.commit()
+    with TestClient(app) as client:
+        data = client.post("/api/ask", json={"question": "What are the latest Recencyprobe AI developments today?"}).json()
+        assert len(data["citations"]) == 1
+        assert data["citations"][0]["type"] == "news"
+        assert "release" in data["citations"][0]["title"]
+        assert "last 24 hours" in data["answer"]
+        assert "no live web search" in data["answer"]
+        missing = client.post("/api/ask", json={"question": "Latest nonexistenttopicprobe news?"}).json()
+        assert missing["mode"] == "no_match"
+        assert "does not mean no developments" in missing["answer"]
+
+
+def test_model_rank_is_cleared_after_leaving_current_list():
+    import httpx
+    payload = [{"id": "test/first", "createdAt": datetime.now(timezone.utc).isoformat()}]
+    with SessionLocal() as session, httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+        source = upsert_source(session, "rank-expiry", "Rank expiry", "https://huggingface.co/api/models", "hf_models")
+        ingest.ingest_hf_models(session, client, source)
+        session.commit()
+        payload[:] = [{"id": "test/second", "createdAt": datetime.now(timezone.utc).isoformat()}]
+        ingest.ingest_hf_models(session, client, source)
+        session.commit()
+        old = session.scalar(select(Item).where(Item.url == "https://huggingface.co/test/first"))
+        assert old.details["trending_rank"] is None
+    with TestClient(app) as client:
+        current = client.get("/api/items", params={"kind":"model", "sort":"trending", "q":"test/first"}).json()
+        assert current["total"] == 0
+
+
+def test_city_and_ai_filters_use_role_not_company_boilerplate():
+    from app.jobs import ai_related, target_location
+    assert target_location("Bangalore, India") and target_location("Bengaluru")
+    assert not target_location("Hyderabad, Sindh, Pakistan")
+    assert ai_related("Machine Learning Engineer")
+    assert not ai_related("Payroll Manager", "Finance")
+    with SessionLocal() as session:
+        source = upsert_source(session, "city-test", "City test", "https://example.org/jobs", "greenhouse_jobs")
+        for i, (location, ai) in enumerate([("Bangalore, India", True), ("Hyderabad, India", False), ("London, UK", True), ("Pune, India", True), ("Chennai, India", True)]):
+            session.add(Item(kind="job", title=f"Cityprobe Engineer {i}", summary="We are an AI company", url=f"https://example.org/city/{i}", source_id=source.id, published_at=datetime.now(timezone.utc), details={"company":"Cityprobe", "location":location, "ai_related":ai, "role":"Engineering"}, title_fingerprint=f"city {i}"))
+        session.commit()
+    with TestClient(app) as client:
+        rows = client.get("/api/items", params={"kind":"job","city":"target","ai_only":True,"company":"Cityprobe","role":"Engineering"}).json()
+        assert rows["total"] == 3
+        assert client.get("/api/items",params={"kind":"job","city":"bengaluru","company":"Cityprobe"}).json()["total"] == 1
+
+
+def test_smartrecruiters_partial_snapshot_never_expires_jobs():
+    import httpx
+    import pytest
+    data = {"totalFound":2,"content":[{"id":"one","name":"AI Engineer","releasedDate":"2026-10-01T00:00:00Z","location":{"city":"Pune","country":"in"}}]}
+    def respond(request):
+        assert request.url.params["destination"] == "PUBLIC"
+        assert request.url.params["country"] == "in"
+        return httpx.Response(200,json=data if request.url.params["offset"] == "0" else {"totalFound":2,"content":[]})
+    with SessionLocal() as session, httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        source = upsert_source(session,"smart-test","Smart test","https://api.smartrecruiters.com/v1/companies/Example/postings","smartrecruiters")
+        with pytest.raises(ValueError,match="Incomplete"):
+            ingest.ingest_smartrecruiters(session,client,source)
+        assert session.scalar(select(func.count()).select_from(Item).where(Item.source_id==source.id)) == 0
+
+
+def test_daily_papers_updates_legacy_arxiv_record_and_attention():
+    import httpx
+    with SessionLocal() as session:
+        source=upsert_source(session,"daily-test","Daily test","https://huggingface.co/api/daily_papers","hf_papers")
+        session.add(Item(kind="paper",title="Attentionprobe research paper",summary="AI research",url="http://arxiv.org/abs/2610.99999v1",source_id=source.id,published_at=datetime.now(timezone.utc),title_fingerprint="attention probe"))
+        session.commit()
+        payload=[{"paper":{"id":"2610.99999","title":"Attentionprobe research paper","upvotes":20}}]
+        with httpx.Client(transport=httpx.MockTransport(lambda _:httpx.Response(200,json=payload))) as client:
+            ingest.ingest_hf_papers(session,client,source)
+        session.commit()
+    with TestClient(app) as client:
+        data=client.get("/api/items",params={"kind":"paper","attention":"popular","q":"Attentionprobe"}).json()
+        assert data["total"] == 1
+        assert data["items"][0]["details"]["upvotes"] == 20
+        assert data["items"][0]["url"] == "https://arxiv.org/abs/2610.99999"
+
+
+def test_source_staleness_and_intelligence_boundaries():
+    from app.main import source_health
+    with SessionLocal() as session:
+        source=upsert_source(session,"stale-test","Stale test","https://example.org/stale","rss")
+        source.enabled=True
+        source.last_success_at=datetime.now(timezone.utc)-timedelta(days=2)
+        assert source_health(source) == "stale"
+        source.last_error="request failed"
+        assert source_health(source) == "error"
+        source.enabled=False
+        assert source_health(source) == "paused"
+        session.commit()
+    with TestClient(app) as client:
+        data=client.get("/api/intelligence").json()
+        assert "not global popularity" in data["methodology"]
+        assert all(row["quote_status"] == "not_connected" for row in data["markets"])
+        assert "rating" in client.get("/api/employers").json()["rating_status"]
+        assert all(item["kind"] != "job" for item in client.get("/api/overview").json()["latest"])
+
+
+def test_bounded_fetch_decodes_compressed_feed_once():
+    import gzip
+    import httpx
+    body = b"<rss><channel><title>AI feed</title></channel></rss>"
+    with httpx.Client(transport=httpx.MockTransport(lambda _:httpx.Response(200,content=gzip.compress(body),headers={"Content-Encoding":"gzip"}))) as client:
+        response=ingest.get_with_retry(client,"https://example.org/compressed")
+        assert response.content == body
+
+
+def test_relevance_matches_ai_without_substring_noise():
+    with SessionLocal() as session:
+        source=upsert_source(session,"relevance-test","General feed","https://example.org/relevance","rss")
+        assert ingest.relevant("AI raises new questions", "Industry developments",source)
+        assert ingest.relevant("RAG architecture", "New retrieval research",source)
+        assert not ingest.relevant("Storage fragmentation tips", "Pragmatic computing",source)
+
+
+def test_natural_trend_and_repository_questions():
+    now=datetime.now(timezone.utc)
+    with SessionLocal() as session:
+        source=upsert_source(session,"repo-intent","Repo intent","https://api.github.com/search/repositories","github_repos")
+        session.add(Item(kind="repo",title="intentprobe/popular",summary="AI tools",url="https://github.com/intentprobe/popular",source_id=source.id,published_at=now,details={"stars":100,"created_at":now.isoformat()},title_fingerprint="intentprobe popular"))
+        session.commit()
+    with TestClient(app) as client:
+        trends=client.post("/api/ask",json={"question":"What are the latest AI trends?"}).json()
+        assert trends["mode"] == "extractive"
+        assert all(c["type"] != "job" for c in trends["citations"])
+        repos=client.post("/api/ask",json={"question":"What are the top new GitHub repos?"}).json()
+        assert repos["citations"]
+        assert all(c["type"] == "repo" for c in repos["citations"])
+        news=client.post("/api/ask",json={"question":"What is the latest AI technology news?"}).json()
+        assert news["citations"]
+        assert all(c["type"] == "news" for c in news["citations"])

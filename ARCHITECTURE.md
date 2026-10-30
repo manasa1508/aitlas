@@ -106,3 +106,46 @@ For the first thousands of records, one API, one worker and PostgreSQL are suffi
 4. **Company and career intelligence:** expand verified public boards and licensed sources, normalize locations, measure coverage, and add evidence freshness and conflict resolution.
 5. **Opportunity analysis:** build a workflow taxonomy, sourced denominator estimates and explicit confidence intervals; then validate with domain experts before ranking markets.
 6. **Editorial quality:** add review tools, corrections, source takedown handling and automated regression evaluations for grounded answers.
+
+## Revised target design (2026-10-31)
+
+The stack decision and realistic alternatives are in [BACKEND_DECISION.md](BACKEND_DECISION.md). Keep one modular application codebase, deploy the read API and ingestion workers independently, and keep inference off API/ingestion processes. SQLite remains a development convenience; use PostgreSQL for a concurrent deployment.
+
+```mermaid
+flowchart TD
+  U[Browser] --> E[HTTPS proxy / static assets / request limits]
+  E --> API[Stateless API replicas]
+  API --> PG[(PostgreSQL: source of truth / full-text index)]
+  S[Scheduler] --> Q[(Durable per-source job leases)]
+  Q --> W[Bounded worker pool]
+  W --> P[Approved public providers]
+  W --> PG
+  W --> O[Permitted source snapshots / versioned object storage]
+  API --> I[Isolated inference with concurrency budget]
+  I --> API
+  PG --> B[Encrypted backups / WAL archive / restore drills]
+  API --> M[Metrics / traces / logs]
+  W --> M
+```
+
+This is a **target**, not a claim that every component is deployed. Current Compose has one PostgreSQL instance, API processes, a sequential source worker, and Nginx on one host. It is deployable but not highly available. Host/DB failure can interrupt it. There is no defined production SLA or measured capacity yet.
+
+### First production priorities
+
+1. **Durable source jobs.** Replace the whole-cycle advisory lock with one durable task per source: source ID, due time, lease expiry, attempt count, last error, next retry, and unique scheduled execution ID. Claim ready work transactionally with `FOR UPDATE SKIP LOCKED`, commit the lease, fetch outside the transaction, then commit normalized records and completion atomically. Renew long leases, recover expired leases, and make writes idempotent. Delivery is at least once; do not claim exactly-once processing. Quarantine repeated failures and expose an operator retry action. Keep provider-specific token buckets, jitter and Retry-After handling. PostgreSQL is enough initially; introduce Valkey with a durable broker or RabbitMQ only when measured queue needs justify operating another system.
+2. **Search and data model.** Move job city, employer, role, AI relevance and publication/activity timestamps into indexed typed fields rather than scanning JSON/LIKE as volume grows. Add `tsvector`/GIN and trigram indexes, keyset pagination and query timeouts. Store article/model/paper/repository identities separately from evidence observations. Add hybrid embeddings only when relevance evaluation shows a benefit; embeddings are not verification. OpenSearch is a later choice for complex faceting/search load after PostgreSQL is measured.
+3. **Quality pipeline.** Retain publication time versus discovery time, source type, fetched-at, license/usage constraints, content hash, extractor version, and corrections. Missing/unparseable publication dates currently fall back to fetch time and need an explicit unknown-date flag before strict freshness guarantees. Maintain independent coverage metrics by lab, language, topic, region and ATS. Source health does not prove completeness. Story clusters should retain all provenance, distinguish syndication from independent evidence, and keep contradictory reports visible. Benchmark/obsolescence claims require task and evaluation context. Prices need a licensed provider, exchange/session timestamp, currency and adjusted/unadjusted baseline; news co-occurrence cannot prove a price movement was caused by AI news.
+4. **Availability.** Use two API replicas across failure domains, a proxy/load balancer, and a PostgreSQL primary with a tested standby/failover plan. Bound connection pools against DB limits. Use rolling deployments and backward-compatible expand/migrate/contract schema changes. Set RPO/RTO targets explicitly (suggested starting targets: 15-minute RPO and 1-hour RTO), implement WAL archiving and restore rehearsals, and verify them before promising them. Compose on one laptop/VM does not satisfy those targets automatically.
+5. **Cache and observability.** Cache read-heavy intelligence pages for 30–60 seconds with source-as-of timestamps and serve stale data with a clear status during provider failures. Add OpenTelemetry, Prometheus and Grafana; use structured logs with secrets/query redaction. Alert on per-source freshness lag, queue age, error rates, exhausted retries, missing ingestion, DB pool saturation, API p95 and model timeouts. Freshness budgets should be tied to each source's cadence and availability, not one global 'live' flag.
+
+### Security boundaries and remaining gates
+
+The current public API exposes reads and question answering, not an admin/source-write interface. Its Nginx proxy sets CSP, frame and content-type protections, request body/time limits, a read API rate limit and a stricter ask limit. Feeds render as text; response sizes are bounded and TLS verification stays enabled. No private enterprise connector is part of the application.
+
+Before internet exposure, add TLS and HSTS at the public edge, trusted proxy configuration, shared rate/LLM concurrency limits across replicas and dependency/container vulnerability scanning. Accounts require OIDC (e.g. self-hosted Keycloak), short-lived sessions in Secure/HttpOnly/SameSite cookies, CSRF protection for account mutations, RBAC for editors, audit logs, retention/deletion and owner checks for every save/follow query. Keep secrets outside Git, rotate them, and use separate least-privilege DB identities for migrations, API and ingestion.
+
+The worker is an outbound trust boundary: the operator-only HTTPS registry and API-host restrictions reduce exposure but do not fully prevent SSRF through malicious DNS or redirects. Enforce network egress rules that deny loopback, private/link-local/metadata ranges; validate DNS and every redirect; cap redirects, decompressed bytes and total elapsed time; restrict credential forwarding by host; and quarantine malformed inputs. Run containers without root/capabilities, with constrained CPU/memory and writable paths. Do not expose database or inference ports publicly.
+
+Treat retrieved text as untrusted data. The local model has no tools, secrets or network authority. Instructions and citation-number checks do not establish factual entailment or prevent all prompt injection. Keep extractive fallback, source-date/coverage disclosures, answer audits, unsupported-question tests, adversarial retrieval tests and human review for material company/market claims. Do not execute fetched code or automatically install discovered repositories.
+
+References: [PostgreSQL locking and queue consumers](https://www.postgresql.org/docs/current/sql-select.html), [OWASP SSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html), [OWASP prompt injection prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html), [FastAPI deployment concepts](https://fastapi.tiangolo.com/deployment/concepts/).

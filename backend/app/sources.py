@@ -12,7 +12,7 @@ from .db import SessionLocal
 from .models import Source
 
 DEFAULTS = Path(__file__).resolve().parents[1] / "config" / "sources.json"
-KINDS = {"rss", "arxiv", "hacker_news", "github_repos", "greenhouse_jobs", "smartrecruiters", "lever_jobs", "hf_models", "hf_papers"}
+KINDS = {"rss", "arxiv", "hacker_news", "github_repos", "greenhouse_jobs", "smartrecruiters", "lever_jobs", "pinpoint_jobs", "hf_models", "hf_papers"}
 API_HOSTS = {"arxiv": ("export.arxiv.org",), "hacker_news": ("hn.algolia.com",), "github_repos": ("api.github.com",), "greenhouse_jobs": ("boards-api.greenhouse.io",), "smartrecruiters": ("api.smartrecruiters.com",), "lever_jobs": ("api.lever.co", "api.eu.lever.co"), "hf_models": ("huggingface.co",), "hf_papers": ("huggingface.co",)}
 
 
@@ -39,6 +39,11 @@ def validate_source(kind: str, url: str, interval: int, options: dict) -> None:
         raise ValueError("SmartRecruiters source must use a public company postings endpoint")
     if kind == "lever_jobs" and not re.fullmatch(r"/v0/postings/[a-zA-Z0-9_-]+", urlparse(url).path):
         raise ValueError("Lever source must use a public board postings endpoint")
+    if kind == "pinpoint_jobs":
+        parsed = urlparse(url)
+        tenant = re.fullmatch(r"[a-z0-9][a-z0-9-]*\.pinpointhq\.com", parsed.hostname or "")
+        if not (tenant or parsed.hostname == "careers.dazn.com") or parsed.path != "/postings.json" or parsed.query or parsed.fragment or parsed.port not in (None, 443):
+            raise ValueError("Pinpoint source must use an approved, unfiltered public postings.json endpoint")
 
 
 def sync_defaults(session: Session) -> int:

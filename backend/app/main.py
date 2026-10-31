@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from .db import get_db, settings, utcnow
 from .models import Company, Evidence, Item, JobRun, Knowledge, Opportunity, Source, UseCase
-from .jobs import JOB_SOURCE_KINDS, apply_job_filters, job_search_links
+from .jobs import JOB_SOURCE_KINDS, apply_job_filters, job_search_links, job_board_url
 from .intelligence import build_intelligence, employer_directory
 
 
@@ -212,7 +212,7 @@ def company_pulse(db: DB, city: str = Query("target", pattern="^(all|target|indi
         job_stmt = apply_job_filters(select(Item).where(Item.kind == "job", Item.source_id == source.id, Item.active.is_(True)), city, ai_only=ai_only)
         open_roles = db.scalar(select(func.count()).select_from(job_stmt.subquery())) or 0
         mentions = db.scalars(select(Item).options(selectinload(Item.source)).where(Item.kind == "news", or_(Item.title.ilike(f"%{name}%"), Item.summary.ilike(f"%{name}%"))).order_by(Item.published_at.desc()).limit(3)).all()
-        pulse.append({"name": name, "open_roles": open_roles, "board_url": source.url, "last_checked": iso(source.last_success_at), "recent_mentions": [item_json(item) for item in mentions]})
+        pulse.append({"name": name, "open_roles": open_roles, "board_url": job_board_url(source), "last_checked": iso(source.last_success_at), "recent_mentions": [item_json(item) for item in mentions]})
     return pulse
 
 

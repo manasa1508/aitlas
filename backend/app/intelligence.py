@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from .db import utcnow
-from .jobs import JOB_SOURCE_KINDS, apply_job_filters
+from .jobs import JOB_SOURCE_KINDS, apply_job_filters, job_board_url
 from .models import Item, Source
 
 
@@ -87,14 +87,18 @@ def employer_directory(db, city="target", ai_only=False, role="all"):
         if value and len(group) < 8:
             group.append(value)
     profiles = config().get("employer_profiles", {})
+    discovery_sources = config().get("employer_discovery_sources", [])
+    discovery_by_id = {entry["id"]: entry for entry in discovery_sources if entry["status"] == "reviewed"}
     for source in sources:
         name = str((source.options or {}).get("company") or source.name)
-        board = source.url.split("/boards/")[-1].split("/")[0] if source.kind == "greenhouse_jobs" else source.url.split("/companies/")[-1].split("/")[0] if source.kind == "smartrecruiters" else source.url.rsplit("/", 1)[-1]
-        career_url = f"https://job-boards.greenhouse.io/{board}" if source.kind == "greenhouse_jobs" else f"https://jobs.smartrecruiters.com/{board}" if source.kind == "smartrecruiters" else f"https://jobs.{'eu.' if 'api.eu.lever.co' in source.url else ''}lever.co/{board}"
+        career_url = job_board_url(source)
         employers.append({"name": name, "category": "Product and technology", **profiles.get(name, {}), "open_roles": counts.get(source.id, 0), "locations": locations.get(source.id, []), "url": career_url, "coverage": "public_feed", "adapter": source.kind, "last_error": source.last_error, "last_checked": source.last_success_at.isoformat() if source.last_success_at else None})
     connected_names = {row["name"].casefold() for row in employers}
     links_only = [entry for entry in config()["career_links"] if entry["name"].casefold() not in connected_names]
     employers.extend({**entry, **profiles.get(entry["name"], {}), "open_roles": None, "locations": [], "coverage": "official_link", "last_checked": None} for entry in links_only)
+    for employer in employers:
+        employer["discovery_sources"] = [discovery_by_id[key] for key in employer.get("discovery_source_ids", []) if key in discovery_by_id]
     return {"employers": employers, "city": city, "ai_only": ai_only, "role": role,
+        "discovery_sources": discovery_sources,
         "coverage_summary": {"connected_employers": len(sources), "synced_employers": sum(bool(source.last_success_at) for source in sources), "failing_employers": sum(bool(source.last_error) for source in sources), "career_links_only": len(links_only), "matching_roles": sum(counts.get(source.id, 0) for source in sources)},
         "rating_status": "Employee ratings are not connected. Dated awards and list membership are cited where verified; they do not rate an individual role or team. Coverage is a selected employer registry, not every GCC or Fortune 500 company."}

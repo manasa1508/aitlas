@@ -1,12 +1,12 @@
 """Shared, conservative job filters. Employer reputation is never inferred."""
 import re
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 from sqlalchemy import and_, not_, or_
 
 from .models import Item
 
-JOB_SOURCE_KINDS = ("greenhouse_jobs", "smartrecruiters", "lever_jobs")
+JOB_SOURCE_KINDS = ("greenhouse_jobs", "smartrecruiters", "lever_jobs", "pinpoint_jobs")
 
 CITY_ALIASES = {"hyderabad": ("hyderabad",), "bengaluru": ("bengaluru", "bangalore"), "pune": ("pune",), "chennai": ("chennai", "madras")}
 
@@ -19,6 +19,22 @@ def target_location(value: str) -> bool:
 def ai_related(title: str, department: str = "") -> bool:
     # Company-wide AI boilerplate does not make every vacancy an AI role.
     return bool(re.search(r"\b(?:ai|ml|llm|llms|nlp|rag|mlops|genai)\b|machine learning|artificial intelligence|data scien(?:ce|tist)|deep learning|computer vision|generative|agentic|applied scientist|inference|model training", f"{title} {department}", re.I))
+
+
+def job_board_url(source) -> str:
+    """Link readers to the employer's board, rather than its JSON API."""
+    if (source.options or {}).get("careers_url"):
+        return source.options["careers_url"]
+    if source.kind == "greenhouse_jobs":
+        board = re.fullmatch(r"/v1/boards/([a-zA-Z0-9_-]+)/jobs", urlparse(source.url).path)
+        return "https://job-boards.greenhouse.io/" + board[1] if board else source.url
+    if source.kind == "smartrecruiters":
+        board = re.fullmatch(r"/v1/companies/([a-zA-Z0-9_-]+)/postings", urlparse(source.url).path)
+        return "https://jobs.smartrecruiters.com/" + board[1] if board else source.url
+    if source.kind == "pinpoint_jobs":
+        return source.url.removesuffix("/postings.json")
+    host = "jobs.eu.lever.co" if urlparse(source.url).hostname == "api.eu.lever.co" else "jobs.lever.co"
+    return f"https://{host}/{source.url.rsplit('/', 1)[-1]}"
 
 
 def city_condition(city: str):

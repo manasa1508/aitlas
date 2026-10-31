@@ -379,6 +379,48 @@ def ingest_lever_jobs(session: Session, client: httpx.Client, source: Source) ->
     return sync_job_snapshot(session, source, normalized)
 
 
+def ingest_pinpoint_jobs(session: Session, client: httpx.Client, source: Source) -> int:
+    """Documented public postings feed; validate the whole snapshot before expiry."""
+    response = get_with_retry(client, source.url)
+    payload = response.json()
+    postings = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(postings, list) or len(postings) > 2000:
+        raise ValueError("Invalid or oversized public Pinpoint snapshot")
+    # The documented endpoint returns all postings. Refuse unexpected pagination
+    # rather than treating a future partial response as a complete snapshot.
+    links, meta = payload.get("links") or {}, payload.get("meta") or {}
+    if not isinstance(links, dict) or not isinstance(meta, dict) or links.get("next") or payload.get("errors") or (meta.get("total") is not None and (type(meta["total"]) is not int or meta["total"] != len(postings))):
+        raise ValueError("Incomplete Pinpoint snapshot; existing jobs retained")
+    ids, urls, normalized = set(), set(), []
+    host = urlparse(source.url).hostname
+    for posting in postings:
+        if not isinstance(posting, dict):
+            raise ValueError("Malformed Pinpoint posting")
+        identifier, title, raw_url = posting.get("id"), posting.get("title"), posting.get("url")
+        if not isinstance(identifier, str) or not identifier or identifier in ids or not isinstance(title, str) or len(clean_text(title, 300)) < 4 or not isinstance(raw_url, str):
+            raise ValueError("Malformed or duplicate Pinpoint posting; existing jobs retained")
+        url = canonical_url(raw_url)
+        parsed = urlparse(url or "")
+        if not url or parsed.scheme != "https" or parsed.hostname != host or parsed.username or parsed.password or parsed.port not in (None, 443) or not re.fullmatch(r"/(?:[a-zA-Z-]+/)?postings/[a-zA-Z0-9-]+", parsed.path) or url in urls:
+            raise ValueError("Invalid public Pinpoint posting URL; existing jobs retained")
+        ids.add(identifier); urls.add(url)
+        job, location = posting.get("job"), posting.get("location")
+        if not isinstance(job, dict) or not isinstance(location, dict) or not isinstance(location.get("name"), str) or not location["name"].strip():
+            raise ValueError("Malformed Pinpoint location or job")
+        department = job.get("department") or {}
+        if not isinstance(department, dict) or not isinstance(department.get("name", ""), str):
+            raise ValueError("Malformed Pinpoint department")
+        for field in ("description", "employment_type_text", "workplace_type_text"):
+            if posting.get(field) is not None and not isinstance(posting[field], str):
+                raise ValueError("Malformed Pinpoint posting text")
+        # The public feed supplies no publication timestamp. Do not turn each
+        # refresh into a new posting date; sync_job_snapshot preserves first seen.
+        normalized.append({"internal_job_id": identifier, "title": title, "absolute_url": url,
+            "location": {"name": location["name"]}, "departments": [{"name": department.get("name", "")}],
+            "content": posting.get("description") or title, "employment_type": posting.get("employment_type_text"), "workplace_type": posting.get("workplace_type_text")})
+    return sync_job_snapshot(session, source, normalized)
+
+
 def ingest_hf_models(session: Session, client: httpx.Client, source: Source) -> int:
     limit = min(100, max(1, int((source.options or {}).get("limit", 30))))
     response = get_with_retry(client, source.url, params={"sort": "trendingScore", "direction": "-1", "limit": limit})
@@ -462,7 +504,7 @@ def run_ingestion(session: Session, *, force: bool = False) -> JobRun | None:
     run = JobRun(status="running", errors=[])
     session.add(run)
     session.commit()
-    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "smartrecruiters": ingest_smartrecruiters, "lever_jobs": ingest_lever_jobs, "hf_models": ingest_hf_models, "hf_papers": ingest_hf_papers}
+    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "smartrecruiters": ingest_smartrecruiters, "lever_jobs": ingest_lever_jobs, "pinpoint_jobs": ingest_pinpoint_jobs, "hf_models": ingest_hf_models, "hf_papers": ingest_hf_papers}
     headers = {"User-Agent": settings.user_agent, "Accept": "application/json, application/atom+xml, application/rss+xml, */*"}
     errors: list[str] = []
     inserted = 0

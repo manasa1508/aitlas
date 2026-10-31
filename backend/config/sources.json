@@ -513,5 +513,258 @@
       "audience": "developer",
       "source_type": "research"
     }
+  },
+  {
+    "id": "experian-india-jobs",
+    "name": "Experian India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/Experian/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Experian",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "westerndigital-india-jobs",
+    "name": "Western Digital India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/WesternDigital/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Western Digital",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "aristanetworks-india-jobs",
+    "name": "Arista Networks India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/AristaNetworks/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Arista Networks",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "continental-india-jobs",
+    "name": "Continental India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/Continental/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Continental",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "sutherland-india-jobs",
+    "name": "Sutherland India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/Sutherland/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Sutherland",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "eurofins-india-jobs",
+    "name": "Eurofins India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/Eurofins/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Eurofins",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "syngentagroup-india-jobs",
+    "name": "Syngenta India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/SyngentaGroup/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Syngenta",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "informagroupplc-india-jobs",
+    "name": "Informa India careers",
+    "url": "https://api.smartrecruiters.com/v1/companies/InformaGroupPlc/postings",
+    "kind": "smartrecruiters",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Informa",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "newrelic-india-jobs",
+    "name": "New Relic India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/newrelic/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "New Relic",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "elastic-india-jobs",
+    "name": "Elastic India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/elastic/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Elastic",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "fivetran-india-jobs",
+    "name": "Fivetran India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/fivetran/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Fivetran",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "pubmatic-india-jobs",
+    "name": "PubMatic India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/pubmatic/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "PubMatic",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "inmobi-india-jobs",
+    "name": "InMobi India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/inmobi/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "InMobi",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "zuora-india-jobs",
+    "name": "Zuora India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/zuora/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Zuora",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "6sense-india-jobs",
+    "name": "6sense India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/6sense/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "6sense",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "nice-india-jobs",
+    "name": "NICE India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/nice/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "NICE",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "samsara-india-jobs",
+    "name": "Samsara India careers",
+    "url": "https://boards-api.greenhouse.io/v1/boards/samsara/jobs",
+    "kind": "greenhouse_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Samsara",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "mindtickle-india-jobs",
+    "name": "Mindtickle India careers",
+    "url": "https://api.lever.co/v0/postings/mindtickle",
+    "kind": "lever_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Mindtickle",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "coupa-india-jobs",
+    "name": "Coupa India careers",
+    "url": "https://api.lever.co/v0/postings/coupa",
+    "kind": "lever_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Coupa",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "cred-india-jobs",
+    "name": "CRED India careers",
+    "url": "https://api.lever.co/v0/postings/cred",
+    "kind": "lever_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "CRED",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "paytm-india-jobs",
+    "name": "Paytm India careers",
+    "url": "https://api.lever.co/v0/postings/paytm",
+    "kind": "lever_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Paytm",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "meesho-india-jobs",
+    "name": "Meesho India careers",
+    "url": "https://api.lever.co/v0/postings/meesho",
+    "kind": "lever_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Meesho",
+      "target_cities_only": true
+    }
+  },
+  {
+    "id": "everseen-india-jobs",
+    "name": "Everseen India careers",
+    "url": "https://api.eu.lever.co/v0/postings/everseen",
+    "kind": "lever_jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Everseen",
+      "target_cities_only": true
+    }
   }
 ]

@@ -1,35 +1,495 @@
 {
   "topics": [
-    {"id":"agents","name":"Agents and coding","terms":["agentic","agent","coding","copilot","claude code"]},
-    {"id":"reasoning","name":"Reasoning and learning","terms":["reasoning","reinforcement learning","distillation","continual learning","training"]},
-    {"id":"open-models","name":"Open models","terms":["open-weight","open source","open-source","llama","qwen","mistral","gemma","nemotron"]},
-    {"id":"multimodal","name":"Multimodal and media","terms":["multimodal","speech","video generation","image generation","vision","audio"]},
-    {"id":"infrastructure","name":"Inference and hardware","terms":["inference","gpu","nvidia","amd","accelerator","quantization","datacenter","data center"]},
-    {"id":"science","name":"Science and robotics","terms":["robot","discovery","protein","drug","scientific","biology","simulation"]},
-    {"id":"business","name":"AI business and policy","terms":["funding","acquisition","revenue","partnership","regulation","policy","earnings","shares"]}
+    {
+      "id": "agents",
+      "name": "Agents and coding",
+      "terms": [
+        "agentic",
+        "agent",
+        "coding",
+        "copilot",
+        "claude code"
+      ]
+    },
+    {
+      "id": "reasoning",
+      "name": "Reasoning and learning",
+      "terms": [
+        "reasoning",
+        "reinforcement learning",
+        "distillation",
+        "continual learning",
+        "training"
+      ]
+    },
+    {
+      "id": "open-models",
+      "name": "Open models",
+      "terms": [
+        "open-weight",
+        "open source",
+        "open-source",
+        "llama",
+        "qwen",
+        "mistral",
+        "gemma",
+        "nemotron"
+      ]
+    },
+    {
+      "id": "multimodal",
+      "name": "Multimodal and media",
+      "terms": [
+        "multimodal",
+        "speech",
+        "video generation",
+        "image generation",
+        "vision",
+        "audio"
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "name": "Inference and hardware",
+      "terms": [
+        "inference",
+        "gpu",
+        "nvidia",
+        "amd",
+        "accelerator",
+        "quantization",
+        "datacenter",
+        "data center"
+      ]
+    },
+    {
+      "id": "science",
+      "name": "Science and robotics",
+      "terms": [
+        "robot",
+        "discovery",
+        "protein",
+        "drug",
+        "scientific",
+        "biology",
+        "simulation"
+      ]
+    },
+    {
+      "id": "business",
+      "name": "AI business and policy",
+      "terms": [
+        "funding",
+        "acquisition",
+        "revenue",
+        "partnership",
+        "regulation",
+        "policy",
+        "earnings",
+        "shares"
+      ]
+    }
   ],
   "market_watchlist": [
-    {"symbol":"NVDA","name":"NVIDIA","aliases":["nvidia","nemotron"]},
-    {"symbol":"MSFT","name":"Microsoft","aliases":["microsoft","azure","copilot"]},
-    {"symbol":"GOOGL","name":"Alphabet","aliases":["google","alphabet","deepmind","gemini"]},
-    {"symbol":"AMZN","name":"Amazon","aliases":["amazon","aws","bedrock"]},
-    {"symbol":"META","name":"Meta","aliases":["meta","llama"]},
-    {"symbol":"AMD","name":"AMD","aliases":["amd","advanced micro devices"]},
-    {"symbol":"TSM","name":"TSMC","aliases":["tsmc","taiwan semiconductor"]},
-    {"symbol":"AVGO","name":"Broadcom","aliases":["broadcom"]}
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA",
+      "aliases": [
+        "nvidia",
+        "nemotron"
+      ]
+    },
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft",
+      "aliases": [
+        "microsoft",
+        "azure",
+        "copilot"
+      ]
+    },
+    {
+      "symbol": "GOOGL",
+      "name": "Alphabet",
+      "aliases": [
+        "google",
+        "alphabet",
+        "deepmind",
+        "gemini"
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "name": "Amazon",
+      "aliases": [
+        "amazon",
+        "aws",
+        "bedrock"
+      ]
+    },
+    {
+      "symbol": "META",
+      "name": "Meta",
+      "aliases": [
+        "meta",
+        "llama"
+      ]
+    },
+    {
+      "symbol": "AMD",
+      "name": "AMD",
+      "aliases": [
+        "amd",
+        "advanced micro devices"
+      ]
+    },
+    {
+      "symbol": "TSM",
+      "name": "TSMC",
+      "aliases": [
+        "tsmc",
+        "taiwan semiconductor"
+      ]
+    },
+    {
+      "symbol": "AVGO",
+      "name": "Broadcom",
+      "aliases": [
+        "broadcom"
+      ]
+    }
   ],
   "career_links": [
-    {"name":"Microsoft","category":"Technology multinational","url":"https://careers.microsoft.com/v2/global/en/locations/india.html"},
-    {"name":"Google","category":"Technology multinational","url":"https://www.google.com/about/careers/applications/jobs/results/?location=India"},
-    {"name":"Amazon / AWS","category":"Technology multinational","url":"https://www.amazon.jobs/en/search?country=IND"},
-    {"name":"NVIDIA","category":"Technology multinational","url":"https://www.nvidia.com/en-us/about-nvidia/careers/"},
-    {"name":"Salesforce","category":"Technology multinational","url":"https://careers.salesforce.com/en/locations/india/"},
-    {"name":"Oracle","category":"Technology multinational","url":"https://www.oracle.com/in/careers/"},
-    {"name":"SAP","category":"Technology multinational","url":"https://jobs.sap.com/"},
-    {"name":"Qualcomm","category":"Technology multinational","url":"https://careers.qualcomm.com/"},
-    {"name":"JPMorgan Chase","category":"Financial services / GCC watchlist","url":"https://careers.jpmorgan.com/global/en/about-us/locations/india"},
-    {"name":"Goldman Sachs","category":"Financial services / GCC watchlist","url":"https://www.goldmansachs.com/careers/"},
-    {"name":"Wells Fargo","category":"Financial services / GCC watchlist","url":"https://www.wellsfargojobs.com/"},
-    {"name":"Walmart Global Tech","category":"Retail technology / GCC watchlist","url":"https://tech.walmart.com/content/walmart-global-tech/en_us/careers.html"}
-  ]
+    {
+      "name": "Microsoft",
+      "category": "Technology multinational",
+      "url": "https://careers.microsoft.com/v2/global/en/locations/india.html"
+    },
+    {
+      "name": "Google",
+      "category": "Technology multinational",
+      "url": "https://www.google.com/about/careers/applications/jobs/results/?location=India"
+    },
+    {
+      "name": "Amazon / AWS",
+      "category": "Technology multinational",
+      "url": "https://www.amazon.jobs/en/search?country=IND"
+    },
+    {
+      "name": "NVIDIA",
+      "category": "Technology multinational",
+      "url": "https://www.nvidia.com/en-us/about-nvidia/careers/"
+    },
+    {
+      "name": "Salesforce",
+      "category": "Technology multinational",
+      "url": "https://careers.salesforce.com/en/locations/india/"
+    },
+    {
+      "name": "Oracle",
+      "category": "Technology multinational",
+      "url": "https://www.oracle.com/in/careers/"
+    },
+    {
+      "name": "SAP",
+      "category": "Technology multinational",
+      "url": "https://jobs.sap.com/"
+    },
+    {
+      "name": "Qualcomm",
+      "category": "Technology multinational",
+      "url": "https://careers.qualcomm.com/"
+    },
+    {
+      "name": "JPMorgan Chase",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://careers.jpmorgan.com/global/en/about-us/locations/india"
+    },
+    {
+      "name": "Goldman Sachs",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://www.goldmansachs.com/careers/"
+    },
+    {
+      "name": "Wells Fargo",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://www.wellsfargojobs.com/"
+    },
+    {
+      "name": "Walmart Global Tech",
+      "category": "Retail technology / GCC watchlist",
+      "url": "https://tech.walmart.com/content/walmart-global-tech/en_us/careers.html"
+    },
+    {
+      "name": "Citi",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://jobs.citi.com/"
+    },
+    {
+      "name": "Bank of America",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://careers.bankofamerica.com/"
+    },
+    {
+      "name": "American Express",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://www.americanexpress.com/en-us/careers/"
+    },
+    {
+      "name": "HSBC",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://www.hsbc.com/careers"
+    },
+    {
+      "name": "Barclays",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://search.jobs.barclays/"
+    },
+    {
+      "name": "Deutsche Bank",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://careers.db.com/"
+    },
+    {
+      "name": "UBS",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://www.ubs.com/global/en/careers.html"
+    },
+    {
+      "name": "Mastercard",
+      "category": "Payments technology",
+      "url": "https://careers.mastercard.com/"
+    },
+    {
+      "name": "Visa",
+      "category": "Payments technology",
+      "url": "https://corporate.visa.com/en/careers.html"
+    },
+    {
+      "name": "Optum / UnitedHealth Group",
+      "category": "Healthcare / GCC watchlist",
+      "url": "https://careers.unitedhealthgroup.com/"
+    },
+    {
+      "name": "Target",
+      "category": "Retail / GCC watchlist",
+      "url": "https://corporate.target.com/careers/"
+    },
+    {
+      "name": "Lowe’s",
+      "category": "Retail / GCC watchlist",
+      "url": "https://talent.lowes.com/"
+    },
+    {
+      "name": "FedEx",
+      "category": "Logistics / GCC watchlist",
+      "url": "https://careers.fedex.com/"
+    },
+    {
+      "name": "PepsiCo",
+      "category": "Consumer goods / GCC watchlist",
+      "url": "https://www.pepsicojobs.com/"
+    },
+    {
+      "name": "Novartis",
+      "category": "Life sciences / GCC watchlist",
+      "url": "https://www.novartis.com/careers"
+    },
+    {
+      "name": "AstraZeneca",
+      "category": "Life sciences / GCC watchlist",
+      "url": "https://careers.astrazeneca.com/"
+    },
+    {
+      "name": "Sanofi",
+      "category": "Life sciences / GCC watchlist",
+      "url": "https://jobs.sanofi.com/"
+    },
+    {
+      "name": "Adobe",
+      "category": "Technology multinational",
+      "url": "https://careers.adobe.com/"
+    },
+    {
+      "name": "Cisco",
+      "category": "Technology multinational",
+      "url": "https://jobs.cisco.com/"
+    },
+    {
+      "name": "Intel",
+      "category": "Technology multinational",
+      "url": "https://jobs.intel.com/"
+    },
+    {
+      "name": "Dell",
+      "category": "Technology multinational",
+      "url": "https://jobs.dell.com/"
+    },
+    {
+      "name": "Micron",
+      "category": "Technology multinational",
+      "url": "https://careers.micron.com/"
+    },
+    {
+      "name": "Intuit",
+      "category": "Technology multinational",
+      "url": "https://www.intuit.com/careers/"
+    },
+    {
+      "name": "AMD",
+      "category": "Technology multinational",
+      "url": "https://careers.amd.com/"
+    },
+    {
+      "name": "Broadcom",
+      "category": "Technology multinational",
+      "url": "https://www.broadcom.com/company/careers"
+    },
+    {
+      "name": "IBM",
+      "category": "Technology multinational",
+      "url": "https://www.ibm.com/careers"
+    },
+    {
+      "name": "Accenture",
+      "category": "IT services",
+      "url": "https://www.accenture.com/in-en/careers"
+    },
+    {
+      "name": "Deloitte",
+      "category": "Professional services",
+      "url": "https://www.deloitte.com/in/en/careers.html"
+    }
+  ],
+  "employer_profiles": {
+    "Experian": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Financial data",
+      "recognitions": [
+        {
+          "kind": "workplace",
+          "label": "World’s Best Workplaces",
+          "year": 2025,
+          "source_url": "https://www.experianplc.com/newsroom/press-releases/2025/experian-named-one-of-worlds-best-workplaces-for-second-consecutive-year"
+        }
+      ],
+      "location_evidence_url": "https://www.experian.com/careers/locations-teams/emea-apac"
+    },
+    "Western Digital": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Hardware",
+      "recognitions": [
+        {
+          "kind": "fortune500",
+          "label": "Fortune 500",
+          "year": 2026,
+          "source_url": "https://www.fortune.com/ranking/fortune500/"
+        }
+      ]
+    },
+    "Arista Networks": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Networking",
+      "recognitions": [
+        {
+          "kind": "fortune500",
+          "label": "Fortune 500",
+          "year": 2026,
+          "source_url": "https://www.arista.com/company/news/press-release/24401-pr-20260804"
+        }
+      ]
+    },
+    "Continental": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Engineering"
+    },
+    "Sutherland": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "IT services"
+    },
+    "Eurofins": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Life sciences"
+    },
+    "Syngenta": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Life sciences"
+    },
+    "Informa": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Information services"
+    },
+    "Bosch": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Engineering"
+    },
+    "NielsenIQ": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Data and analytics"
+    },
+    "ServiceNow": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Enterprise software"
+    },
+    "Coupa": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Enterprise software"
+    },
+    "NICE": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Enterprise software"
+    },
+    "New Relic": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Elastic": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Fivetran": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "PubMatic": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "InMobi": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Zuora": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "6sense": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Samsara": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Mindtickle": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "CRED": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Paytm": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Meesho": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Everseen": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    }
+  }
 }

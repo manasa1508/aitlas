@@ -850,5 +850,66 @@
       "target_cities_only": true,
       "careers_url": "https://careers.dazn.com/india"
     }
+  },
+  {
+    "id": "us500-employers",
+    "name": "US500 employer discovery",
+    "kind": "employer_catalog",
+    "url": "https://us500.com/fortune-500-companies",
+    "interval_minutes": 1440,
+    "options": {
+      "reference_id": "us500",
+      "title": "US500 public-company directory",
+      "min_rows": 400,
+      "max_rows": 750
+    }
+  },
+  {
+    "id": "doordashindia-india-jobs",
+    "name": "DoorDash India careers",
+    "kind": "greenhouse_jobs",
+    "url": "https://boards-api.greenhouse.io/v1/boards/doordashindia/jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "DoorDash",
+      "target_cities_only": true,
+      "careers_url": "https://careersatdoordash.com/working-at-doordash-in-india/"
+    }
+  },
+  {
+    "id": "intuitive-india-jobs",
+    "name": "Intuitive Surgical India careers",
+    "kind": "smartrecruiters",
+    "url": "https://api.smartrecruiters.com/v1/companies/Intuitive/postings",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Intuitive Surgical",
+      "target_cities_only": true,
+      "careers_url": "https://careers.intuitive.com/en/"
+    }
+  },
+  {
+    "id": "abbvie-india-jobs",
+    "name": "AbbVie India careers",
+    "kind": "smartrecruiters",
+    "url": "https://api.smartrecruiters.com/v1/companies/AbbVie/postings",
+    "interval_minutes": 120,
+    "options": {
+      "company": "AbbVie",
+      "target_cities_only": true,
+      "careers_url": "https://careers.abbvie.com/"
+    }
+  },
+  {
+    "id": "averydennison-india-jobs",
+    "name": "Avery Dennison India careers",
+    "kind": "smartrecruiters",
+    "url": "https://api.smartrecruiters.com/v1/companies/AveryDennison/postings",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Avery Dennison",
+      "target_cities_only": true,
+      "careers_url": "https://careers.smartrecruiters.com/AveryDennison"
+    }
   }
 ]

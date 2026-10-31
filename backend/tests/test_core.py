@@ -28,6 +28,8 @@ def setup_module():
     Base.metadata.create_all(engine)
     with SessionLocal() as session:
         seed(session)
+        from app.employers import sync_employer_defaults
+        sync_employer_defaults(session)
 
 
 def teardown_module():
@@ -259,8 +261,7 @@ def test_search_reaches_deep_active_catalog():
         assert all(row["kind"] != "job" for row in client.get("/api/items", params={"limit": 100}).json()["items"])
         assert client.get("/api/items", params={"kind": "job", "role": "Engineering"}).json()["total"] >= 510
         company_search = client.get("/api/search", params={"q": "Together AI"}).json()
-        assert company_search["total"] == 1
-        assert company_search["results"][0]["url"] == "https://example.org/together-role"
+        assert any(row["type"] == "job" and row["url"] == "https://example.org/together-role" for row in company_search["results"])
 
 
 def test_latest_answer_respects_time_and_excludes_jobs():
@@ -512,3 +513,105 @@ def test_natural_trend_and_repository_questions():
         news=client.post("/api/ask",json={"question":"What is the latest AI technology news?"}).json()
         assert news["citations"]
         assert all(c["type"] == "news" for c in news["citations"])
+
+
+def test_us500_parser_requires_complete_company_table():
+    import pytest
+    from app.employers import parse_us500
+    table = '<table><tr><th>Rank</th><th>Company</th><th>Revenue</th></tr><tr><td>1</td><td>Example &amp; Co</td><td>999</td></tr><tr><td>2</td><td>Another Company</td><td>888</td></tr></table>'
+    assert parse_us500(table, min_rows=2) == [{"name":"Example & Co"}, {"name":"Another Company"}]
+    for invalid in (table.removesuffix('</table>'), table.replace('<td>2</td>', '<td>3</td>'), table.replace('Another Company', 'Example &amp; Co'), '<p>Too many requests</p>'):
+        with pytest.raises(ValueError):
+            parse_us500(invalid, min_rows=2)
+    with pytest.raises(ValueError):
+        parse_us500(table, min_rows=2, previous_size=10)
+
+
+def test_catalog_discovery_persists_new_companies_without_enabling_job_feeds():
+    from app.employers import sync_catalog_snapshot, name_key
+    from app.models import Employer
+    with SessionLocal() as session:
+        source = upsert_source(session, 'catalog-dynamic-test', 'Catalog test', 'https://us500.com/fortune-500-companies', 'employer_catalog')
+        source.options = {'reference_id':'catalog-test'}
+        before_sources = session.scalar(select(func.count()).select_from(Source))
+        original = session.scalar(select(Employer).where(Employer.name_key == name_key('IBM')))
+        assert sync_catalog_snapshot(session, source, [{'name':'International Business Machines'}, {'name':'Discoveryprobe New Company'}]) == 1
+        session.commit()
+        assert session.scalar(select(func.count()).select_from(Source)) == before_sources
+        assert session.scalar(select(Employer).where(Employer.name_key == name_key('IBM'))).id == original.id
+        row = session.scalar(select(Employer).where(Employer.name_key == name_key('Discoveryprobe New Company')))
+        assert row.careers_url is None and row.active
+        assert row.references[0]['id'] == 'catalog-test'
+        assert sync_catalog_snapshot(session, source, [{'name':'Discoveryprobe New Company'}, {'name':'Dynamicprobe Added Later'}]) == 1
+        session.commit()
+    with TestClient(app) as client:
+        data = client.get('/api/employers').json()
+        row = next(row for row in data['employers'] if row['name'] == 'Dynamicprobe Added Later')
+        assert row['coverage'] == 'discovery_only' and row['open_roles'] is None and row['url'] is None
+        assert row['discovery_sources'][0]['id'] == 'catalog-test'
+        search = client.get('/api/search', params={'q':'Dynamicprobe Added Later'}).json()
+        assert any(row['type'] == 'employer' and 'unverified' in row['snippet'] for row in search['results'])
+
+
+def test_catalog_withdrawal_never_retires_jobs_and_preserves_manual_records():
+    import pytest
+    from app.employers import sync_catalog_snapshot, name_key
+    from app.models import Employer
+    with SessionLocal() as session:
+        source = upsert_source(session, 'catalog-withdraw', 'Catalog withdraw', 'https://us500.com/fortune-500-companies', 'employer_catalog')
+        source.options = {'reference_id':'catalog-withdraw'}
+        sync_catalog_snapshot(session, source, [{'name':'Microsoft'}, {'name':'Withdrawprobe Company'}])
+        session.add(Item(kind='job', title='Withdrawprobe AI Engineer', summary='Public test job', url='https://example.org/catalog-job', source_id=source.id, published_at=datetime.now(timezone.utc), active=True, title_fingerprint='withdrawprobe'))
+        session.commit()
+        row = session.scalar(select(Employer).where(Employer.name_key == name_key('Withdrawprobe Company')))
+        with pytest.raises(ValueError):
+            sync_catalog_snapshot(session, source, [{'name':'Invalidprobe'}, {'unexpected':'field'}])
+        assert row.references[0]['misses'] == 0
+        for _ in range(2):
+            sync_catalog_snapshot(session, source, [{'name':'Keepaliveprobe Company'}])
+        assert row.active is False
+        assert session.get(Employer, row.id) is row
+        assert session.scalar(select(Employer).where(Employer.name_key == 'microsoft')).active
+        assert session.scalar(select(Item).where(Item.url == 'https://example.org/catalog-job')).active
+        with pytest.raises(ValueError, match='older'):
+            sync_catalog_snapshot(session, source, [{'name':'Oldprobe Company'}], observed_at=datetime.now(timezone.utc)-timedelta(days=1))
+
+
+def test_employer_defaults_preserve_database_edits():
+    from app.employers import sync_employer_defaults
+    from app.models import Employer
+    with SessionLocal() as session:
+        row = session.scalar(select(Employer).where(Employer.name_key == 'amgen'))
+        row.careers_url = 'https://careers.amgen.com/en'
+        row.profile = {**row.profile, 'category':'Operator reviewed category'}
+        session.commit()
+        sync_employer_defaults(session)
+        assert row.profile['category'] == 'Operator reviewed category'
+        assert row.careers_url == 'https://careers.amgen.com/en'
+
+
+def test_rate_limits_use_persistent_retry_after_and_keep_catalog():
+    import httpx
+    import pytest
+    calls = []
+    def respond(request):
+        calls.append(str(request.url))
+        return httpx.Response(429, headers={'Retry-After':'7200'})
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client, pytest.raises(httpx.HTTPStatusError):
+        ingest.get_with_retry(client, 'https://us500.com/fortune-500-companies')
+    assert len(calls) == 1
+    from unittest.mock import patch
+    def fail(*args):
+        raise httpx.HTTPStatusError('rate limited', request=httpx.Request('GET','https://us500.com/fortune-500-companies'), response=httpx.Response(429,headers={'Retry-After':'7200'}))
+    with SessionLocal() as session:
+        for row in session.scalars(select(Source)).all():
+            row.enabled = row.id == 'catalog-dynamic-test'
+        source = session.get(Source, 'catalog-dynamic-test')
+        source.last_success_at = datetime.now(timezone.utc)-timedelta(hours=1)
+        success = source.last_success_at
+        session.commit()
+        with patch.object(ingest, 'ingest_employer_catalog', fail):
+            run = ingest.run_ingestion(session, force=True)
+        assert run.status == 'partial'
+        assert source.next_fetch_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc)+timedelta(minutes=119)
+        assert source.last_success_at.replace(tzinfo=timezone.utc) == success

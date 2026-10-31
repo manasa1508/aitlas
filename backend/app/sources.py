@@ -12,8 +12,8 @@ from .db import SessionLocal
 from .models import Source
 
 DEFAULTS = Path(__file__).resolve().parents[1] / "config" / "sources.json"
-KINDS = {"rss", "arxiv", "hacker_news", "github_repos", "greenhouse_jobs", "smartrecruiters", "hf_models", "hf_papers"}
-API_HOSTS = {"arxiv": "export.arxiv.org", "hacker_news": "hn.algolia.com", "github_repos": "api.github.com", "greenhouse_jobs": "boards-api.greenhouse.io", "smartrecruiters": "api.smartrecruiters.com", "hf_models": "huggingface.co", "hf_papers": "huggingface.co"}
+KINDS = {"rss", "arxiv", "hacker_news", "github_repos", "greenhouse_jobs", "smartrecruiters", "lever_jobs", "hf_models", "hf_papers"}
+API_HOSTS = {"arxiv": ("export.arxiv.org",), "hacker_news": ("hn.algolia.com",), "github_repos": ("api.github.com",), "greenhouse_jobs": ("boards-api.greenhouse.io",), "smartrecruiters": ("api.smartrecruiters.com",), "lever_jobs": ("api.lever.co", "api.eu.lever.co"), "hf_models": ("huggingface.co",), "hf_papers": ("huggingface.co",)}
 
 
 def validate_url(url: str) -> str:
@@ -27,7 +27,7 @@ def validate_source(kind: str, url: str, interval: int, options: dict) -> None:
     validate_url(url)
     if kind not in KINDS or not 5 <= interval <= 1440 or not isinstance(options, dict):
         raise ValueError("Invalid source kind, interval or options")
-    if kind in API_HOSTS and urlparse(url).hostname != API_HOSTS[kind]:
+    if kind in API_HOSTS and urlparse(url).hostname not in API_HOSTS[kind]:
         raise ValueError(f"{kind} source must use {API_HOSTS[kind]}")
     if kind == "greenhouse_jobs" and not re.fullmatch(r"/v1/boards/[a-zA-Z0-9_-]+/jobs", urlparse(url).path):
         raise ValueError("Greenhouse source must be a public board jobs endpoint")
@@ -37,6 +37,8 @@ def validate_source(kind: str, url: str, interval: int, options: dict) -> None:
         raise ValueError("Daily Papers source must use the public listing endpoint")
     if kind == "smartrecruiters" and not re.fullmatch(r"/v1/companies/[a-zA-Z0-9_-]+/postings", urlparse(url).path):
         raise ValueError("SmartRecruiters source must use a public company postings endpoint")
+    if kind == "lever_jobs" and not re.fullmatch(r"/v0/postings/[a-zA-Z0-9_-]+", urlparse(url).path):
+        raise ValueError("Lever source must use a public board postings endpoint")
 
 
 def sync_defaults(session: Session) -> int:

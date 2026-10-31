@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from .db import get_db, settings, utcnow
 from .models import Company, Evidence, Item, JobRun, Knowledge, Opportunity, Source, UseCase
-from .jobs import apply_job_filters
+from .jobs import JOB_SOURCE_KINDS, apply_job_filters, job_search_links
 from .intelligence import build_intelligence, employer_directory
 
 
@@ -170,8 +170,13 @@ def intelligence(db: DB, days: int = Query(7, ge=1, le=30), topic: str = Query("
 
 
 @app.get("/api/employers")
-def employers(db: DB, city: str = Query("target", pattern="^(all|target|india|hyderabad|bengaluru|pune|chennai)$"), ai_only: bool = False):
-    return employer_directory(db, city, ai_only)
+def employers(db: DB, city: str = Query("target", pattern="^(all|target|india|hyderabad|bengaluru|pune|chennai)$"), ai_only: bool = False, role: str = Query("all", max_length=60)):
+    return employer_directory(db, city, ai_only, role)
+
+
+@app.get("/api/job-search-links")
+def external_job_searches(city: str = Query("target", pattern="^(all|target|india|hyderabad|bengaluru|pune|chennai)$"), q: str = Query("", max_length=120), role: str = Query("all", max_length=60), ai_only: bool = False):
+    return job_search_links(city, q, role, ai_only)
 
 
 @app.get("/api/knowledge")
@@ -202,7 +207,7 @@ def companies(db: DB, q: str = Query("", max_length=120)):
 @app.get("/api/company-pulse")
 def company_pulse(db: DB, city: str = Query("target", pattern="^(all|target|india|hyderabad|bengaluru|pune|chennai)$"), ai_only: bool = False):
     pulse = []
-    for source in db.scalars(select(Source).where(Source.kind.in_(("greenhouse_jobs", "smartrecruiters")), Source.enabled.is_(True)).order_by(Source.name)).all():
+    for source in db.scalars(select(Source).where(Source.kind.in_(JOB_SOURCE_KINDS), Source.enabled.is_(True)).order_by(Source.name)).all():
         name = str((source.options or {}).get("company") or source.name)
         job_stmt = apply_job_filters(select(Item).where(Item.kind == "job", Item.source_id == source.id, Item.active.is_(True)), city, ai_only=ai_only)
         open_roles = db.scalar(select(func.count()).select_from(job_stmt.subquery())) or 0

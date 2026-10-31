@@ -276,7 +276,7 @@ def sync_job_snapshot(session: Session, source: Source, jobs: list[dict]) -> int
             continue
         department = ", ".join(clean_text(d.get("name") or "", 80) for d in (job.get("departments") or [])[:3])
         description = clean_text(job.get("content") or "", 700)
-        details = {"audience": "developer" if job_role(title) in {"Research & AI", "Engineering"} else "business", "company": company, "location": location, "department": department, "role": job_role(title), "ai_related": ai_related(title, department), "updated_at": job.get("updated_at"), "misses": 0}
+        details = {"audience": "developer" if job_role(title) in {"Research & AI", "Engineering"} else "business", "company": company, "location": location, "department": department, "role": job_role(title), "ai_related": ai_related(title, department), "updated_at": job.get("updated_at"), "last_checked_at": now.isoformat(), "date_basis": "published" if job.get("first_published") else "updated" if job.get("updated_at") else "first_seen", "employment_type": job.get("employment_type"), "workplace_type": job.get("workplace_type"), "source_job_id": str(job.get("internal_job_id")), "misses": 0}
         if url in existing:
             row = existing[url]
             row.title = title
@@ -284,6 +284,8 @@ def sync_job_snapshot(session: Session, source: Source, jobs: list[dict]) -> int
             row.details = details
             row.active = True
             row.last_seen_at = now
+            if job.get("first_published") or job.get("updated_at"):
+                row.published_at = parse_date(job.get("first_published") or job.get("updated_at"))
         else:
             session.add(Item(kind="job", title=title, summary=description or f"{title} at {company} · {location}", url=url, source_id=source.id, published_at=parse_date(job.get("first_published") or job.get("updated_at")), tags=[job_role(title)], details=details, active=True, last_seen_at=now, score=60, title_fingerprint=fingerprint(f"{company} {title} {location}")))
             added += 1
@@ -331,6 +333,49 @@ def ingest_smartrecruiters(session: Session, client: httpx.Client, source: Sourc
             "location": {"name": location.get("fullLocation") or f"{location.get('city', '')}, India"},
             "first_published": job.get("releasedDate"), "departments": [{"name": (job.get("department") or {}).get("label", "")}],
             "content": f"{job.get('name', '')} · {(job.get('function') or {}).get('label', '')} · {(job.get('experienceLevel') or {}).get('label', '')}. View the official posting for full requirements."})
+    return sync_job_snapshot(session, source, normalized)
+
+
+def ingest_lever_jobs(session: Session, client: httpx.Client, source: Source) -> int:
+    """Public global/EU Postings API. Complete every page before changing availability."""
+    postings, ids, offset = [], set(), 0
+    host = "jobs.eu.lever.co" if urlparse(source.url).hostname == "api.eu.lever.co" else "jobs.lever.co"
+    while True:
+        response = get_with_retry(client, source.url, params={"mode": "json", "limit": 100, "skip": offset})
+        page = response.json()
+        if not isinstance(page, list) or len(page) > 100 or offset + len(page) > 5000:
+            raise ValueError("Invalid or oversized public Lever page")
+        for posting in page:
+            if not isinstance(posting, dict) or not posting.get("id") or posting["id"] in ids:
+                raise ValueError("Malformed or repeated Lever page; existing jobs retained")
+            ids.add(posting["id"])
+            url = canonical_url(posting.get("hostedUrl") or "")
+            if not url or urlparse(url).scheme != "https" or urlparse(url).hostname != host or not posting.get("text"):
+                raise ValueError("Invalid public Lever posting; existing jobs retained")
+            postings.append(posting)
+        offset += len(page)
+        if len(page) < 100:
+            break
+    normalized = []
+    for posting in postings:
+        categories = posting.get("categories") or {}
+        if not isinstance(categories, dict):
+            raise ValueError("Malformed Lever categories")
+        extra_locations = categories.get("allLocations") or []
+        if not isinstance(extra_locations, list):
+            raise ValueError("Malformed Lever location list")
+        locations = [categories.get("location") or "", *extra_locations]
+        location = "; ".join(dict.fromkeys(str(value) for value in locations if value))
+        created = posting.get("createdAt")
+        try:
+            published = datetime.fromtimestamp(float(created) / 1000, tz=timezone.utc).isoformat() if created is not None else None
+        except (ValueError, TypeError, OverflowError, OSError):
+            published = None
+        normalized.append({"internal_job_id": posting["id"], "title": posting["text"],
+            "absolute_url": posting["hostedUrl"], "location": {"name": location}, "first_published": published,
+            "departments": [{"name": categories.get("department") or ""}, {"name": categories.get("team") or ""}],
+            "content": posting.get("descriptionPlain") or posting.get("description") or posting["text"],
+            "employment_type": clean_text(categories.get("commitment") or "", 80), "workplace_type": clean_text(posting.get("workplaceType") or "", 80)})
     return sync_job_snapshot(session, source, normalized)
 
 
@@ -417,7 +462,7 @@ def run_ingestion(session: Session, *, force: bool = False) -> JobRun | None:
     run = JobRun(status="running", errors=[])
     session.add(run)
     session.commit()
-    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "smartrecruiters": ingest_smartrecruiters, "hf_models": ingest_hf_models, "hf_papers": ingest_hf_papers}
+    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "smartrecruiters": ingest_smartrecruiters, "lever_jobs": ingest_lever_jobs, "hf_models": ingest_hf_models, "hf_papers": ingest_hf_papers}
     headers = {"User-Agent": settings.user_agent, "Accept": "application/json, application/atom+xml, application/rss+xml, */*"}
     errors: list[str] = []
     inserted = 0

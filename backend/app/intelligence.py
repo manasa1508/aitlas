@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from .db import utcnow
-from .jobs import apply_job_filters
+from .jobs import JOB_SOURCE_KINDS, apply_job_filters
 from .models import Item, Source
 
 
@@ -74,15 +74,27 @@ def build_intelligence(db, serialize, days=7, topic="all"):
         "methodology": "Trends count matching records in a bounded source sample, not global popularity. Stars, votes and model ranks measure attention, not quality. Comparisons are publisher claims. News and price movements alone do not establish causation."}
 
 
-def employer_directory(db, city="target", ai_only=False):
+def employer_directory(db, city="target", ai_only=False, role="all"):
     employers = []
-    for source in db.scalars(select(Source).where(Source.kind.in_(("greenhouse_jobs", "smartrecruiters")), Source.enabled.is_(True)).order_by(Source.name)).all():
+    sources = db.scalars(select(Source).where(Source.kind.in_(JOB_SOURCE_KINDS), Source.enabled.is_(True)).order_by(Source.name)).all()
+    scoped = apply_job_filters(select(Item).where(Item.kind == "job", Item.active.is_(True)), city, ai_only=ai_only)
+    if role != "all":
+        scoped = scoped.where(Item.details["role"].as_string() == role)
+    counts = dict(db.execute(scoped.with_only_columns(Item.source_id, func.count()).group_by(Item.source_id)).all())
+    locations = {}
+    for source_id, value in db.execute(scoped.with_only_columns(Item.source_id, Item.details["location"].as_string()).distinct()).all():
+        group = locations.setdefault(source_id, [])
+        if value and len(group) < 8:
+            group.append(value)
+    profiles = config().get("employer_profiles", {})
+    for source in sources:
         name = str((source.options or {}).get("company") or source.name)
-        stmt = apply_job_filters(select(Item).where(Item.kind == "job", Item.active.is_(True), Item.source_id == source.id), city, ai_only=ai_only)
-        count = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-        locations = db.scalars(stmt.with_only_columns(Item.details["location"].as_string()).distinct().limit(8)).all()
-        board = source.url.split("/boards/")[-1].split("/")[0] if source.kind == "greenhouse_jobs" else source.url.split("/companies/")[-1].split("/")[0]
-        career_url = f"https://job-boards.greenhouse.io/{board}" if source.kind == "greenhouse_jobs" else f"https://jobs.smartrecruiters.com/{board}"
-        employers.append({"name": name, "category": "Indexed employer", "open_roles": count, "locations": locations, "url": career_url, "coverage": "public_feed", "last_checked": source.last_success_at.isoformat() if source.last_success_at else None})
-    employers.extend({**entry, "open_roles": None, "locations": [], "coverage": "official_link", "last_checked": None} for entry in config()["career_links"])
-    return {"employers": employers, "city": city, "ai_only": ai_only, "rating_status": "No employee-rating dataset is connected. This directory does not rank or rate employers."}
+        board = source.url.split("/boards/")[-1].split("/")[0] if source.kind == "greenhouse_jobs" else source.url.split("/companies/")[-1].split("/")[0] if source.kind == "smartrecruiters" else source.url.rsplit("/", 1)[-1]
+        career_url = f"https://job-boards.greenhouse.io/{board}" if source.kind == "greenhouse_jobs" else f"https://jobs.smartrecruiters.com/{board}" if source.kind == "smartrecruiters" else f"https://jobs.{'eu.' if 'api.eu.lever.co' in source.url else ''}lever.co/{board}"
+        employers.append({"name": name, "category": "Product and technology", **profiles.get(name, {}), "open_roles": counts.get(source.id, 0), "locations": locations.get(source.id, []), "url": career_url, "coverage": "public_feed", "adapter": source.kind, "last_error": source.last_error, "last_checked": source.last_success_at.isoformat() if source.last_success_at else None})
+    connected_names = {row["name"].casefold() for row in employers}
+    links_only = [entry for entry in config()["career_links"] if entry["name"].casefold() not in connected_names]
+    employers.extend({**entry, **profiles.get(entry["name"], {}), "open_roles": None, "locations": [], "coverage": "official_link", "last_checked": None} for entry in links_only)
+    return {"employers": employers, "city": city, "ai_only": ai_only, "role": role,
+        "coverage_summary": {"connected_employers": len(sources), "synced_employers": sum(bool(source.last_success_at) for source in sources), "failing_employers": sum(bool(source.last_error) for source in sources), "career_links_only": len(links_only), "matching_roles": sum(counts.get(source.id, 0) for source in sources)},
+        "rating_status": "Employee ratings are not connected. Dated awards and list membership are cited where verified; they do not rate an individual role or team. Coverage is a selected employer registry, not every GCC or Fortune 500 company."}

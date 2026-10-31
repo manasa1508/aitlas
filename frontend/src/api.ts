@@ -20,6 +20,7 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
-export type Employer = {name: string; category: string; sector?: string; url: string; open_roles: number | null; coverage: string; locations: string[]; last_checked: string | null; last_error?: string | null; adapter?: string; recognitions?: {kind: string; label: string; year: number; source_url: string}[]}
-export type EmployerResponse = {employers: Employer[]; rating_status: string; coverage_summary: {connected_employers: number; synced_employers: number; failing_employers: number; career_links_only: number; matching_roles: number}}
+export type EmployerDiscoverySource = {id: string; title: string; url: string; status: string; checked_at: string}
+export type Employer = {discovery_sources?: EmployerDiscoverySource[]; name: string; category: string; sector?: string; url: string; open_roles: number | null; coverage: string; locations: string[]; last_checked: string | null; last_error?: string | null; adapter?: string; recognitions?: {kind: string; label: string; year: number; source_url: string}[]}
+export type EmployerResponse = {employers: Employer[]; discovery_sources?: EmployerDiscoverySource[]; rating_status: string; coverage_summary: {connected_employers: number; synced_employers: number; failing_employers: number; career_links_only: number; matching_roles: number}}
 export type IntelligenceData = {window_days: number; sample_size: number; sample_truncated: boolean; methodology: string; topics: {id: string; name: string; count: number; previous_count: number; source_count: number}[]; discoveries: Signal[]; repos: Signal[]; shifts: {item: Signal; label: string; claim_excerpt: string; status: string}[]; markets: {symbol: string; name: string; news_count: number; reports: Signal[]; reaction_reports: Signal[]; quote_url: string; quote_status: string}[]}

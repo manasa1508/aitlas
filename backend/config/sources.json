@@ -766,5 +766,89 @@
       "company": "Everseen",
       "target_cities_only": true
     }
+  },
+  {
+    "id": "highradius-india-jobs",
+    "name": "HighRadius India careers",
+    "kind": "greenhouse_jobs",
+    "url": "https://boards-api.greenhouse.io/v1/boards/highradius/jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "HighRadius",
+      "target_cities_only": true,
+      "careers_url": "https://www.highradius.com/about/career/"
+    }
+  },
+  {
+    "id": "workatbackbase-india-jobs",
+    "name": "Backbase India careers",
+    "kind": "greenhouse_jobs",
+    "url": "https://boards-api.greenhouse.io/v1/boards/workatbackbase/jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Backbase",
+      "target_cities_only": true,
+      "careers_url": "https://www.backbase.com/careers/locations/hyderabad"
+    }
+  },
+  {
+    "id": "arcesiumllc-india-jobs",
+    "name": "Arcesium India careers",
+    "kind": "greenhouse_jobs",
+    "url": "https://boards-api.greenhouse.io/v1/boards/arcesiumllc/jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Arcesium",
+      "target_cities_only": true,
+      "careers_url": "https://www.arcesium.com/careers"
+    }
+  },
+  {
+    "id": "tide-india-jobs",
+    "name": "Tide India careers",
+    "kind": "greenhouse_jobs",
+    "url": "https://boards-api.greenhouse.io/v1/boards/tide/jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Tide",
+      "target_cities_only": true,
+      "careers_url": "https://www.tide.co/careers/"
+    }
+  },
+  {
+    "id": "deliveroo-india-jobs",
+    "name": "Deliveroo India careers",
+    "kind": "greenhouse_jobs",
+    "url": "https://boards-api.greenhouse.io/v1/boards/deliveroo/jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Deliveroo",
+      "target_cities_only": true,
+      "careers_url": "https://careers.deliveroo.co.uk/locations/india/"
+    }
+  },
+  {
+    "id": "redwoodsoftware-india-jobs",
+    "name": "Redwood Software India careers",
+    "kind": "greenhouse_jobs",
+    "url": "https://boards-api.greenhouse.io/v1/boards/redwoodsoftware/jobs",
+    "interval_minutes": 120,
+    "options": {
+      "company": "Redwood Software",
+      "target_cities_only": true,
+      "careers_url": "https://www.redwood.com/careers/"
+    }
+  },
+  {
+    "id": "dazn-india-jobs",
+    "name": "DAZN India careers",
+    "kind": "pinpoint_jobs",
+    "url": "https://careers.dazn.com/postings.json",
+    "interval_minutes": 120,
+    "options": {
+      "company": "DAZN",
+      "target_cities_only": true,
+      "careers_url": "https://careers.dazn.com/india"
+    }
   }
 ]

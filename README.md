@@ -40,7 +40,7 @@ OLLAMA_MODEL=qwen3:8b
 
 ## Docker deployment
 
-The Compose configuration runs PostgreSQL, a migration/seed step, API, ingestion worker, and Nginx frontend. The expanded 45-source ingestion cycle and the job, model, company-pulse and search endpoints were verified through the containerized web proxy on the authoring host. Run the commands below in your environment to check your network and credentials.
+The Compose configuration runs PostgreSQL, a migration/seed step, API, ingestion worker, and Nginx frontend. The expanded ingestion cycle and the job, model, company-pulse and search endpoints were verified through the containerized web proxy on the authoring host. Run the commands below in your environment to check your network and credentials.
 
 ```bash
 cp .env.example .env
@@ -54,7 +54,7 @@ If your network inspects TLS traffic through an organization certificate, set `C
 
 ## Included features
 
-- Forty-five default sources spanning public publisher and developer RSS feeds, arXiv, Hacker News, GitHub repositories, Hugging Face model listings, and nineteen selected Greenhouse and SmartRecruiters company job boards.
+- Sixty-eight default sources spanning public publisher and developer RSS feeds, arXiv, Hacker News, GitHub repositories, Hugging Face model listings, and 42 selected Greenhouse, SmartRecruiters and Lever employer job feeds.
 - Database-backed source registry with per-source polling schedules, exponential failure backoff, and an operator CLI for adding feeds or changing source options without code edits.
 - URL and near-title deduplication, bounded fetches, error isolation by source, sync health and timestamps.
 - Business and developer filters, a model watch, live job search by role/company/location, and a company hiring pulse that separates news mentions from verified claims.
@@ -63,7 +63,7 @@ If your network inspects TLS traffic through an organization certificate, set `C
 - Paginated search across active live records and reviewed content, plus Q&A with numbered citations and optional local Ollama synthesis.
 - Responsive frontend, API docs, SQLite local mode, PostgreSQL Compose mode, versioned Alembic migrations, and backend tests.
 
-Company information and case study outcomes are reported by their linked publishers. Live job counts come from public boards and are checked hourly; a job or news mention is not proof of AI adoption. The source registry is a curated starting set, not complete coverage of every publisher, company, role, repository or model. GitHub star change is measured since the prior sync, not presented as a 24-hour trend.
+Company information and case study outcomes are reported by their linked publishers. Live job counts come from public boards and are checked every one to two hours; a job or news mention is not proof of AI adoption. The source registry is a curated starting set, not complete coverage of every publisher, company, role, repository or model. GitHub star change is measured since the prior sync, not presented as a 24-hour trend.
 
 Every default connector uses a public endpoint. The repository contains no private company data, local database, credentials or certificate files.
 
@@ -100,6 +100,8 @@ The Intelligence view adds research discoveries, topic-volume trends, top starre
 
 Signals default to the last seven days, newest first, with measured-attention filters: repositories with at least 25 stars, Daily Papers entries with at least five votes, current model trending ranks, and Hacker News entries with at least ten points. Other publisher feeds have no popularity threshold. Switch to All recent or the full archive to include unranked discoveries. Attention is not technical quality. Expand cards for excerpts, attention evidence and paper code links when supplied.
 
-Jobs default to Hyderabad, Bengaluru/Bangalore, Pune and Chennai. Existing role and employer text search remain; city and AI-related-role filters combine with them. AI relevance uses titles/departments rather than corporate descriptions. Fourteen more employer feeds were verified through public Greenhouse and SmartRecruiters endpoints; the latter reads only PUBLIC India postings and completes pagination before job expiry. The employer directory also links official technology and GCC careers sites whose roles are not indexed. No employee-rating dataset is connected, so no employer ratings are invented. Registry and watchlists remain editable JSON plus database configuration.
+Jobs default to Hyderabad, Bengaluru/Bangalore, Pune and Chennai. Existing role and employer text search remain; city and AI-related-role filters combine with them. AI relevance uses titles/departments rather than corporate descriptions. The registry now has 42 employer feeds across Greenhouse, SmartRecruiters and Lever (including EU boards). SmartRecruiters reads only PUBLIC India postings. Paginated adapters complete their snapshots before availability changes, and two successful misses are required for expiry. The employer directory has 40 additional official careers links whose roles are not indexed. City-specific LinkedIn, Indeed, Naukri and Foundit searches carry the current keywords and role hints; their results stay on those services. Selected Fortune 500 membership and workplace recognitions have dated source links. No employee-rating dataset is connected, so no employer ratings are invented. Registry and watchlists remain editable JSON plus database configuration.
 
 [BACKEND_DECISION.md](BACKEND_DECISION.md) compares Python, TypeScript, Go, Java, Rust, .NET and Django. [ARCHITECTURE.md](ARCHITECTURE.md) explicitly separates today's single-host deployment from the proposed highly available architecture.
+
+See [JOBS_DATA.md](JOBS_DATA.md) for current employer coverage, provider access restrictions, expansion instructions and aggregation options.

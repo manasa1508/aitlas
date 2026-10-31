@@ -12,8 +12,8 @@ from .db import SessionLocal
 from .models import Source
 
 DEFAULTS = Path(__file__).resolve().parents[1] / "config" / "sources.json"
-KINDS = {"rss", "arxiv", "hacker_news", "github_repos", "greenhouse_jobs", "smartrecruiters", "hf_models", "hf_papers"}
-API_HOSTS = {"arxiv": "export.arxiv.org", "hacker_news": "hn.algolia.com", "github_repos": "api.github.com", "greenhouse_jobs": "boards-api.greenhouse.io", "smartrecruiters": "api.smartrecruiters.com", "hf_models": "huggingface.co", "hf_papers": "huggingface.co"}
+KINDS = {"rss", "arxiv", "hacker_news", "github_repos", "greenhouse_jobs", "smartrecruiters", "lever_jobs", "pinpoint_jobs", "employer_catalog", "hf_models", "hf_papers"}
+API_HOSTS = {"arxiv": ("export.arxiv.org",), "hacker_news": ("hn.algolia.com",), "github_repos": ("api.github.com",), "greenhouse_jobs": ("boards-api.greenhouse.io",), "smartrecruiters": ("api.smartrecruiters.com",), "lever_jobs": ("api.lever.co", "api.eu.lever.co"), "hf_models": ("huggingface.co",), "hf_papers": ("huggingface.co",)}
 
 
 def validate_url(url: str) -> str:
@@ -27,7 +27,7 @@ def validate_source(kind: str, url: str, interval: int, options: dict) -> None:
     validate_url(url)
     if kind not in KINDS or not 5 <= interval <= 1440 or not isinstance(options, dict):
         raise ValueError("Invalid source kind, interval or options")
-    if kind in API_HOSTS and urlparse(url).hostname != API_HOSTS[kind]:
+    if kind in API_HOSTS and urlparse(url).hostname not in API_HOSTS[kind]:
         raise ValueError(f"{kind} source must use {API_HOSTS[kind]}")
     if kind == "greenhouse_jobs" and not re.fullmatch(r"/v1/boards/[a-zA-Z0-9_-]+/jobs", urlparse(url).path):
         raise ValueError("Greenhouse source must be a public board jobs endpoint")
@@ -37,6 +37,21 @@ def validate_source(kind: str, url: str, interval: int, options: dict) -> None:
         raise ValueError("Daily Papers source must use the public listing endpoint")
     if kind == "smartrecruiters" and not re.fullmatch(r"/v1/companies/[a-zA-Z0-9_-]+/postings", urlparse(url).path):
         raise ValueError("SmartRecruiters source must use a public company postings endpoint")
+    if kind == "lever_jobs" and not re.fullmatch(r"/v0/postings/[a-zA-Z0-9_-]+", urlparse(url).path):
+        raise ValueError("Lever source must use a public board postings endpoint")
+    if kind == "pinpoint_jobs":
+        parsed = urlparse(url)
+        tenant = re.fullmatch(r"[a-z0-9][a-z0-9-]*\.pinpointhq\.com", parsed.hostname or "")
+        if not (tenant or parsed.hostname == "careers.dazn.com") or parsed.path != "/postings.json" or parsed.query or parsed.fragment or parsed.port not in (None, 443):
+            raise ValueError("Pinpoint source must use an approved, unfiltered public postings.json endpoint")
+    if kind == "employer_catalog":
+        parsed = urlparse(url)
+        if parsed.hostname != "us500.com" or parsed.path != "/fortune-500-companies" or parsed.query or parsed.fragment or parsed.port not in (None, 443):
+            raise ValueError("Employer catalog must use the reviewed US500 company-list endpoint")
+        if not re.fullmatch(r"[a-z][a-z0-9-]{0,79}", options.get("reference_id", "us500")):
+            raise ValueError("Invalid employer catalog reference ID")
+        if not 1 <= int(options.get("min_rows", 400)) <= int(options.get("max_rows", 750)) <= 5000:
+            raise ValueError("Invalid employer catalog size bounds")
 
 
 def sync_defaults(session: Session) -> int:
@@ -48,6 +63,9 @@ def sync_defaults(session: Session) -> int:
         validate_source(record["kind"], record["url"], record["interval_minutes"], record.get("options", {}))
         session.add(Source(**record, enabled=True))
         count += 1
+    session.commit()
+    from .employers import register_configured_sources
+    register_configured_sources(session)
     session.commit()
     return count
 
@@ -96,6 +114,9 @@ def main() -> None:
             except (ValueError, TypeError) as exc:
                 parser.error(str(exc))
             session.add(Source(id=args.id, name=args.name, url=args.url, kind=kind, interval_minutes=args.interval, options=options))
+            session.commit()
+            from .employers import register_configured_sources
+            register_configured_sources(session)
             session.commit()
             print(f"Added {args.id}")
         else:

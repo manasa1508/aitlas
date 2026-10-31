@@ -12,8 +12,8 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import get_db, settings, utcnow
-from .models import Company, Evidence, Item, JobRun, Knowledge, Opportunity, Source, UseCase
-from .jobs import apply_job_filters
+from .models import Company, Employer, EmployerCatalog, Evidence, Item, JobRun, Knowledge, Opportunity, Source, UseCase
+from .jobs import JOB_SOURCE_KINDS, apply_job_filters, job_search_links, job_board_url
 from .intelligence import build_intelligence, employer_directory
 
 
@@ -170,8 +170,13 @@ def intelligence(db: DB, days: int = Query(7, ge=1, le=30), topic: str = Query("
 
 
 @app.get("/api/employers")
-def employers(db: DB, city: str = Query("target", pattern="^(all|target|india|hyderabad|bengaluru|pune|chennai)$"), ai_only: bool = False):
-    return employer_directory(db, city, ai_only)
+def employers(db: DB, city: str = Query("target", pattern="^(all|target|india|hyderabad|bengaluru|pune|chennai)$"), ai_only: bool = False, role: str = Query("all", max_length=60)):
+    return employer_directory(db, city, ai_only, role)
+
+
+@app.get("/api/job-search-links")
+def external_job_searches(city: str = Query("target", pattern="^(all|target|india|hyderabad|bengaluru|pune|chennai)$"), q: str = Query("", max_length=120), role: str = Query("all", max_length=60), ai_only: bool = False):
+    return job_search_links(city, q, role, ai_only)
 
 
 @app.get("/api/knowledge")
@@ -202,12 +207,12 @@ def companies(db: DB, q: str = Query("", max_length=120)):
 @app.get("/api/company-pulse")
 def company_pulse(db: DB, city: str = Query("target", pattern="^(all|target|india|hyderabad|bengaluru|pune|chennai)$"), ai_only: bool = False):
     pulse = []
-    for source in db.scalars(select(Source).where(Source.kind.in_(("greenhouse_jobs", "smartrecruiters")), Source.enabled.is_(True)).order_by(Source.name)).all():
+    for source in db.scalars(select(Source).where(Source.kind.in_(JOB_SOURCE_KINDS), Source.enabled.is_(True)).order_by(Source.name)).all():
         name = str((source.options or {}).get("company") or source.name)
         job_stmt = apply_job_filters(select(Item).where(Item.kind == "job", Item.source_id == source.id, Item.active.is_(True)), city, ai_only=ai_only)
         open_roles = db.scalar(select(func.count()).select_from(job_stmt.subquery())) or 0
         mentions = db.scalars(select(Item).options(selectinload(Item.source)).where(Item.kind == "news", or_(Item.title.ilike(f"%{name}%"), Item.summary.ilike(f"%{name}%"))).order_by(Item.published_at.desc()).limit(3)).all()
-        pulse.append({"name": name, "open_roles": open_roles, "board_url": source.url, "last_checked": iso(source.last_success_at), "recent_mentions": [item_json(item) for item in mentions]})
+        pulse.append({"name": name, "open_roles": open_roles, "board_url": job_board_url(source), "last_checked": iso(source.last_success_at), "recent_mentions": [item_json(item) for item in mentions]})
     return pulse
 
 
@@ -340,10 +345,16 @@ def search(db: DB, q: str = Query(..., min_length=2, max_length=120), limit: int
     if not query_tokens:
         return {"query": q, "total": 0, "results": []}
     curated = [doc for doc in curated_documents(db) if query_tokens <= tokens(f"{doc['title']} {doc['snippet']}")]
+    provider_urls = {row.id: row.url for row in db.scalars(select(EmployerCatalog)).all()}
+    phrase = f"%{q.strip()}%"
+    employers = db.scalars(select(Employer).where(Employer.active.is_(True), or_(Employer.name.ilike(phrase), Employer.profile["aliases"].as_string().ilike(phrase)))).all()
+    for row in employers:
+        url = row.careers_url or next((provider_urls[entry["id"]] for entry in row.references if entry.get("present", True) and entry["id"] in provider_urls), None)
+        if url:
+            curated.append({"type": "employer", "title": row.name, "snippet": "Employer registry · official careers link available." if row.careers_url else "Discovered employer · official job feed and India office presence are unverified. Link opens the discovery reference.", "url": url, "date": iso(row.updated_at)})
     curated.sort(key=lambda doc: document_score(doc, query_tokens), reverse=True)
     conditions = item_search_conditions(q)
     base = select(Item).where(Item.active.is_(True))
-    phrase = f"%{q.strip()}%"
     phrase_condition = or_(Item.title.ilike(phrase), Item.summary.ilike(phrase), Item.details["company"].as_string().ilike(phrase), Item.details["location"].as_string().ilike(phrase))
     phrase_stmt = base.where(phrase_condition)
     phrase_count = db.scalar(select(func.count()).select_from(phrase_stmt.subquery())) or 0

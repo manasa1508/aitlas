@@ -62,6 +62,31 @@ class Knowledge(Base):
     related_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
 
 
+class Employer(Base):
+    """Operational employer registry, separate from reviewed company case studies."""
+    __tablename__ = "employers"
+    id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    name_key: Mapped[str] = mapped_column(String(220), unique=True)
+    profile: Mapped[dict] = mapped_column(JSON, default=dict)
+    references: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    careers_url: Mapped[str | None] = mapped_column(String(1000))
+    manual: Mapped[bool] = mapped_column(Boolean, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EmployerCatalog(Base):
+    __tablename__ = "employer_catalogs"
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    url: Mapped[str] = mapped_column(String(1000))
+    status: Mapped[str] = mapped_column(String(32), default="unavailable")
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    source_id: Mapped[str | None] = mapped_column(ForeignKey("sources.id"), unique=True)
+
+
 class Company(Base):
     __tablename__ = "companies"
     id: Mapped[str] = mapped_column(String(60), primary_key=True)

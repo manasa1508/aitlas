@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from .db import settings, utcnow
 from .models import Item, JobRun, Source
 from .jobs import ai_related, target_location
+from .employers import parse_us500, register_configured_sources, sync_catalog_snapshot
 
 LOG = logging.getLogger(__name__)
 
@@ -276,7 +277,7 @@ def sync_job_snapshot(session: Session, source: Source, jobs: list[dict]) -> int
             continue
         department = ", ".join(clean_text(d.get("name") or "", 80) for d in (job.get("departments") or [])[:3])
         description = clean_text(job.get("content") or "", 700)
-        details = {"audience": "developer" if job_role(title) in {"Research & AI", "Engineering"} else "business", "company": company, "location": location, "department": department, "role": job_role(title), "ai_related": ai_related(title, department), "updated_at": job.get("updated_at"), "misses": 0}
+        details = {"audience": "developer" if job_role(title) in {"Research & AI", "Engineering"} else "business", "company": company, "location": location, "department": department, "role": job_role(title), "ai_related": ai_related(title, department), "updated_at": job.get("updated_at"), "last_checked_at": now.isoformat(), "date_basis": "published" if job.get("first_published") else "updated" if job.get("updated_at") else "first_seen", "employment_type": job.get("employment_type"), "workplace_type": job.get("workplace_type"), "source_job_id": str(job.get("internal_job_id")), "misses": 0}
         if url in existing:
             row = existing[url]
             row.title = title
@@ -284,6 +285,8 @@ def sync_job_snapshot(session: Session, source: Source, jobs: list[dict]) -> int
             row.details = details
             row.active = True
             row.last_seen_at = now
+            if job.get("first_published") or job.get("updated_at"):
+                row.published_at = parse_date(job.get("first_published") or job.get("updated_at"))
         else:
             session.add(Item(kind="job", title=title, summary=description or f"{title} at {company} · {location}", url=url, source_id=source.id, published_at=parse_date(job.get("first_published") or job.get("updated_at")), tags=[job_role(title)], details=details, active=True, last_seen_at=now, score=60, title_fingerprint=fingerprint(f"{company} {title} {location}")))
             added += 1
@@ -332,6 +335,102 @@ def ingest_smartrecruiters(session: Session, client: httpx.Client, source: Sourc
             "first_published": job.get("releasedDate"), "departments": [{"name": (job.get("department") or {}).get("label", "")}],
             "content": f"{job.get('name', '')} · {(job.get('function') or {}).get('label', '')} · {(job.get('experienceLevel') or {}).get('label', '')}. View the official posting for full requirements."})
     return sync_job_snapshot(session, source, normalized)
+
+
+def ingest_lever_jobs(session: Session, client: httpx.Client, source: Source) -> int:
+    """Public global/EU Postings API. Complete every page before changing availability."""
+    postings, ids, offset = [], set(), 0
+    host = "jobs.eu.lever.co" if urlparse(source.url).hostname == "api.eu.lever.co" else "jobs.lever.co"
+    while True:
+        response = get_with_retry(client, source.url, params={"mode": "json", "limit": 100, "skip": offset})
+        page = response.json()
+        if not isinstance(page, list) or len(page) > 100 or offset + len(page) > 5000:
+            raise ValueError("Invalid or oversized public Lever page")
+        for posting in page:
+            if not isinstance(posting, dict) or not posting.get("id") or posting["id"] in ids:
+                raise ValueError("Malformed or repeated Lever page; existing jobs retained")
+            ids.add(posting["id"])
+            url = canonical_url(posting.get("hostedUrl") or "")
+            if not url or urlparse(url).scheme != "https" or urlparse(url).hostname != host or not posting.get("text"):
+                raise ValueError("Invalid public Lever posting; existing jobs retained")
+            postings.append(posting)
+        offset += len(page)
+        if len(page) < 100:
+            break
+    normalized = []
+    for posting in postings:
+        categories = posting.get("categories") or {}
+        if not isinstance(categories, dict):
+            raise ValueError("Malformed Lever categories")
+        extra_locations = categories.get("allLocations") or []
+        if not isinstance(extra_locations, list):
+            raise ValueError("Malformed Lever location list")
+        locations = [categories.get("location") or "", *extra_locations]
+        location = "; ".join(dict.fromkeys(str(value) for value in locations if value))
+        created = posting.get("createdAt")
+        try:
+            published = datetime.fromtimestamp(float(created) / 1000, tz=timezone.utc).isoformat() if created is not None else None
+        except (ValueError, TypeError, OverflowError, OSError):
+            published = None
+        normalized.append({"internal_job_id": posting["id"], "title": posting["text"],
+            "absolute_url": posting["hostedUrl"], "location": {"name": location}, "first_published": published,
+            "departments": [{"name": categories.get("department") or ""}, {"name": categories.get("team") or ""}],
+            "content": posting.get("descriptionPlain") or posting.get("description") or posting["text"],
+            "employment_type": clean_text(categories.get("commitment") or "", 80), "workplace_type": clean_text(posting.get("workplaceType") or "", 80)})
+    return sync_job_snapshot(session, source, normalized)
+
+
+def ingest_pinpoint_jobs(session: Session, client: httpx.Client, source: Source) -> int:
+    """Documented public postings feed; validate the whole snapshot before expiry."""
+    response = get_with_retry(client, source.url)
+    payload = response.json()
+    postings = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(postings, list) or len(postings) > 2000:
+        raise ValueError("Invalid or oversized public Pinpoint snapshot")
+    # The documented endpoint returns all postings. Refuse unexpected pagination
+    # rather than treating a future partial response as a complete snapshot.
+    links, meta = payload.get("links") or {}, payload.get("meta") or {}
+    if not isinstance(links, dict) or not isinstance(meta, dict) or links.get("next") or payload.get("errors") or (meta.get("total") is not None and (type(meta["total"]) is not int or meta["total"] != len(postings))):
+        raise ValueError("Incomplete Pinpoint snapshot; existing jobs retained")
+    ids, urls, normalized = set(), set(), []
+    host = urlparse(source.url).hostname
+    for posting in postings:
+        if not isinstance(posting, dict):
+            raise ValueError("Malformed Pinpoint posting")
+        identifier, title, raw_url = posting.get("id"), posting.get("title"), posting.get("url")
+        if not isinstance(identifier, str) or not identifier or identifier in ids or not isinstance(title, str) or len(clean_text(title, 300)) < 4 or not isinstance(raw_url, str):
+            raise ValueError("Malformed or duplicate Pinpoint posting; existing jobs retained")
+        url = canonical_url(raw_url)
+        parsed = urlparse(url or "")
+        if not url or parsed.scheme != "https" or parsed.hostname != host or parsed.username or parsed.password or parsed.port not in (None, 443) or not re.fullmatch(r"/(?:[a-zA-Z-]+/)?postings/[a-zA-Z0-9-]+", parsed.path) or url in urls:
+            raise ValueError("Invalid public Pinpoint posting URL; existing jobs retained")
+        ids.add(identifier); urls.add(url)
+        job, location = posting.get("job"), posting.get("location")
+        if not isinstance(job, dict) or not isinstance(location, dict) or not isinstance(location.get("name"), str) or not location["name"].strip():
+            raise ValueError("Malformed Pinpoint location or job")
+        department = job.get("department") or {}
+        if not isinstance(department, dict) or not isinstance(department.get("name", ""), str):
+            raise ValueError("Malformed Pinpoint department")
+        for field in ("description", "employment_type_text", "workplace_type_text"):
+            if posting.get(field) is not None and not isinstance(posting[field], str):
+                raise ValueError("Malformed Pinpoint posting text")
+        # The public feed supplies no publication timestamp. Do not turn each
+        # refresh into a new posting date; sync_job_snapshot preserves first seen.
+        normalized.append({"internal_job_id": identifier, "title": title, "absolute_url": url,
+            "location": {"name": location["name"]}, "departments": [{"name": department.get("name", "")}],
+            "content": posting.get("description") or title, "employment_type": posting.get("employment_type_text"), "workplace_type": posting.get("workplace_type_text")})
+    return sync_job_snapshot(session, source, normalized)
+
+
+def ingest_employer_catalog(session: Session, client: httpx.Client, source: Source) -> int:
+    options = source.options or {}
+    response = get_with_retry(client, source.url)
+    if len(response.content) > 4 * 1024 * 1024:
+        raise ValueError("Employer directory exceeded 4 MiB")
+    records = parse_us500(response.text, min_rows=int(options.get("min_rows", 400)), max_rows=int(options.get("max_rows", 750)), previous_size=int(options.get("snapshot_size", 0)))
+    count = sync_catalog_snapshot(session, source, records)
+    source.options = {**source.options, "snapshot_origin": "live_http"}
+    return count
 
 
 def ingest_hf_models(session: Session, client: httpx.Client, source: Source) -> int:
@@ -388,7 +487,9 @@ def get_with_retry(client: httpx.Client, url: str, *, params: dict | None = None
                     chunks.append(chunk)
                 decoded_headers = {key: value for key, value in streamed.headers.items() if key.lower() not in {"content-encoding", "content-length", "transfer-encoding"}}
                 response = httpx.Response(streamed.status_code, content=b"".join(chunks), headers=decoded_headers, request=streamed.request)
-            if response.status_code not in {429, 500, 502, 503, 504} or attempt:
+            # A rate limit is handled by the persistent scheduler, not an
+            # immediate retry that could violate Retry-After.
+            if response.status_code not in {500, 502, 503, 504} or attempt:
                 response.raise_for_status()
                 return response
             retry_after = response.headers.get("Retry-After", "")
@@ -402,6 +503,8 @@ def get_with_retry(client: httpx.Client, url: str, *, params: dict | None = None
 
 
 def run_ingestion(session: Session, *, force: bool = False) -> JobRun | None:
+    register_configured_sources(session)
+    session.commit()
     now = utcnow()
     sources = session.scalars(select(Source).where(Source.enabled.is_(True)).order_by(Source.name)).all()
 
@@ -417,7 +520,7 @@ def run_ingestion(session: Session, *, force: bool = False) -> JobRun | None:
     run = JobRun(status="running", errors=[])
     session.add(run)
     session.commit()
-    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "smartrecruiters": ingest_smartrecruiters, "hf_models": ingest_hf_models, "hf_papers": ingest_hf_papers}
+    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "smartrecruiters": ingest_smartrecruiters, "lever_jobs": ingest_lever_jobs, "pinpoint_jobs": ingest_pinpoint_jobs, "employer_catalog": ingest_employer_catalog, "hf_models": ingest_hf_models, "hf_papers": ingest_hf_papers}
     headers = {"User-Agent": settings.user_agent, "Accept": "application/json, application/atom+xml, application/rss+xml, */*"}
     errors: list[str] = []
     inserted = 0
@@ -449,6 +552,15 @@ def run_ingestion(session: Session, *, force: bool = False) -> JobRun | None:
                 source.last_error = str(exc)[:500]
                 source.failure_count += 1
                 source.next_fetch_at = utcnow() + timedelta(minutes=min(360, 5 * 2 ** min(source.failure_count - 1, 6)))
+                if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429:
+                    retry_after = exc.response.headers.get("Retry-After", "")
+                    try:
+                        retry_at = utcnow() + timedelta(seconds=max(0, int(retry_after))) if retry_after.isdigit() else parsedate_to_datetime(retry_after)
+                        if retry_at.tzinfo is None:
+                            retry_at = retry_at.replace(tzinfo=timezone.utc)
+                        source.next_fetch_at = max(source.next_fetch_at, min(retry_at, utcnow() + timedelta(days=1)))
+                    except (ValueError, TypeError, OverflowError):
+                        pass
                 errors.append(f"{source.name}: {type(exc).__name__}: {exc}")
                 session.commit()
                 LOG.warning("%s failed: %s", source.name, exc)

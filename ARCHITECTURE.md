@@ -149,3 +149,7 @@ The worker is an outbound trust boundary: the operator-only HTTPS registry and A
 Treat retrieved text as untrusted data. The local model has no tools, secrets or network authority. Instructions and citation-number checks do not establish factual entailment or prevent all prompt injection. Keep extractive fallback, source-date/coverage disclosures, answer audits, unsupported-question tests, adversarial retrieval tests and human review for material company/market claims. Do not execute fetched code or automatically install discovered repositories.
 
 References: [PostgreSQL locking and queue consumers](https://www.postgresql.org/docs/current/sql-select.html), [OWASP SSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html), [OWASP prompt injection prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html), [FastAPI deployment concepts](https://fastapi.tiangolo.com/deployment/concepts/).
+
+## Employer discovery and vacancy ingestion
+
+The implemented employer registry uses `employers` and `employer_catalogs` tables. US500 discovery runs daily; official ATS job ingestion runs separately. Source configuration, failures and schedules remain in the `sources` table. See [EMPLOYER_ARCHITECTURE.md](EMPLOYER_ARCHITECTURE.md) for the current data flow, coverage states, safeguards and remaining scale boundaries.

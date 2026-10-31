@@ -1,0 +1,18 @@
+{
+  "Amazon / AWS": ["Amazon"],
+  "Walmart Global Tech": ["Walmart"],
+  "Optum / UnitedHealth Group": ["UnitedHealth Group"],
+  "Citi": ["Citigroup"],
+  "NVIDIA": ["Nvidia"],
+  "Meta": ["Meta Platforms"],
+  "Goldman Sachs": ["Goldman Sachs Group"],
+  "Dell": ["Dell Technologies"],
+  "Lowe’s": ["Lowe's"],
+  "IBM": ["International Business Machines"],
+  "Cisco": ["Cisco Systems"],
+  "Micron": ["Micron Technology"],
+  "AMD": ["Advanced Micro Devices"],
+  "Cognizant": ["Cognizant Technology Solutions"],
+  "ADP": ["Automatic Data Processing"],
+  "Bristol Myers Squibb": ["Bristol-Myers Squibb"]
+}

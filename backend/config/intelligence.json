@@ -1,35 +1,1439 @@
 {
   "topics": [
-    {"id":"agents","name":"Agents and coding","terms":["agentic","agent","coding","copilot","claude code"]},
-    {"id":"reasoning","name":"Reasoning and learning","terms":["reasoning","reinforcement learning","distillation","continual learning","training"]},
-    {"id":"open-models","name":"Open models","terms":["open-weight","open source","open-source","llama","qwen","mistral","gemma","nemotron"]},
-    {"id":"multimodal","name":"Multimodal and media","terms":["multimodal","speech","video generation","image generation","vision","audio"]},
-    {"id":"infrastructure","name":"Inference and hardware","terms":["inference","gpu","nvidia","amd","accelerator","quantization","datacenter","data center"]},
-    {"id":"science","name":"Science and robotics","terms":["robot","discovery","protein","drug","scientific","biology","simulation"]},
-    {"id":"business","name":"AI business and policy","terms":["funding","acquisition","revenue","partnership","regulation","policy","earnings","shares"]}
+    {
+      "id": "agents",
+      "name": "Agents and coding",
+      "terms": [
+        "agentic",
+        "agent",
+        "coding",
+        "copilot",
+        "claude code"
+      ]
+    },
+    {
+      "id": "reasoning",
+      "name": "Reasoning and learning",
+      "terms": [
+        "reasoning",
+        "reinforcement learning",
+        "distillation",
+        "continual learning",
+        "training"
+      ]
+    },
+    {
+      "id": "open-models",
+      "name": "Open models",
+      "terms": [
+        "open-weight",
+        "open source",
+        "open-source",
+        "llama",
+        "qwen",
+        "mistral",
+        "gemma",
+        "nemotron"
+      ]
+    },
+    {
+      "id": "multimodal",
+      "name": "Multimodal and media",
+      "terms": [
+        "multimodal",
+        "speech",
+        "video generation",
+        "image generation",
+        "vision",
+        "audio"
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "name": "Inference and hardware",
+      "terms": [
+        "inference",
+        "gpu",
+        "nvidia",
+        "amd",
+        "accelerator",
+        "quantization",
+        "datacenter",
+        "data center"
+      ]
+    },
+    {
+      "id": "science",
+      "name": "Science and robotics",
+      "terms": [
+        "robot",
+        "discovery",
+        "protein",
+        "drug",
+        "scientific",
+        "biology",
+        "simulation"
+      ]
+    },
+    {
+      "id": "business",
+      "name": "AI business and policy",
+      "terms": [
+        "funding",
+        "acquisition",
+        "revenue",
+        "partnership",
+        "regulation",
+        "policy",
+        "earnings",
+        "shares"
+      ]
+    }
   ],
   "market_watchlist": [
-    {"symbol":"NVDA","name":"NVIDIA","aliases":["nvidia","nemotron"]},
-    {"symbol":"MSFT","name":"Microsoft","aliases":["microsoft","azure","copilot"]},
-    {"symbol":"GOOGL","name":"Alphabet","aliases":["google","alphabet","deepmind","gemini"]},
-    {"symbol":"AMZN","name":"Amazon","aliases":["amazon","aws","bedrock"]},
-    {"symbol":"META","name":"Meta","aliases":["meta","llama"]},
-    {"symbol":"AMD","name":"AMD","aliases":["amd","advanced micro devices"]},
-    {"symbol":"TSM","name":"TSMC","aliases":["tsmc","taiwan semiconductor"]},
-    {"symbol":"AVGO","name":"Broadcom","aliases":["broadcom"]}
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA",
+      "aliases": [
+        "nvidia",
+        "nemotron"
+      ]
+    },
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft",
+      "aliases": [
+        "microsoft",
+        "azure",
+        "copilot"
+      ]
+    },
+    {
+      "symbol": "GOOGL",
+      "name": "Alphabet",
+      "aliases": [
+        "google",
+        "alphabet",
+        "deepmind",
+        "gemini"
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "name": "Amazon",
+      "aliases": [
+        "amazon",
+        "aws",
+        "bedrock"
+      ]
+    },
+    {
+      "symbol": "META",
+      "name": "Meta",
+      "aliases": [
+        "meta",
+        "llama"
+      ]
+    },
+    {
+      "symbol": "AMD",
+      "name": "AMD",
+      "aliases": [
+        "amd",
+        "advanced micro devices"
+      ]
+    },
+    {
+      "symbol": "TSM",
+      "name": "TSMC",
+      "aliases": [
+        "tsmc",
+        "taiwan semiconductor"
+      ]
+    },
+    {
+      "symbol": "AVGO",
+      "name": "Broadcom",
+      "aliases": [
+        "broadcom"
+      ]
+    }
   ],
   "career_links": [
-    {"name":"Microsoft","category":"Technology multinational","url":"https://careers.microsoft.com/v2/global/en/locations/india.html"},
-    {"name":"Google","category":"Technology multinational","url":"https://www.google.com/about/careers/applications/jobs/results/?location=India"},
-    {"name":"Amazon / AWS","category":"Technology multinational","url":"https://www.amazon.jobs/en/search?country=IND"},
-    {"name":"NVIDIA","category":"Technology multinational","url":"https://www.nvidia.com/en-us/about-nvidia/careers/"},
-    {"name":"Salesforce","category":"Technology multinational","url":"https://careers.salesforce.com/en/locations/india/"},
-    {"name":"Oracle","category":"Technology multinational","url":"https://www.oracle.com/in/careers/"},
-    {"name":"SAP","category":"Technology multinational","url":"https://jobs.sap.com/"},
-    {"name":"Qualcomm","category":"Technology multinational","url":"https://careers.qualcomm.com/"},
-    {"name":"JPMorgan Chase","category":"Financial services / GCC watchlist","url":"https://careers.jpmorgan.com/global/en/about-us/locations/india"},
-    {"name":"Goldman Sachs","category":"Financial services / GCC watchlist","url":"https://www.goldmansachs.com/careers/"},
-    {"name":"Wells Fargo","category":"Financial services / GCC watchlist","url":"https://www.wellsfargojobs.com/"},
-    {"name":"Walmart Global Tech","category":"Retail technology / GCC watchlist","url":"https://tech.walmart.com/content/walmart-global-tech/en_us/careers.html"}
+    {
+      "name": "Microsoft",
+      "category": "Technology multinational",
+      "url": "https://careers.microsoft.com/v2/global/en/locations/india.html"
+    },
+    {
+      "name": "Google",
+      "category": "Technology multinational",
+      "url": "https://www.google.com/about/careers/applications/jobs/results/?location=India"
+    },
+    {
+      "name": "Amazon / AWS",
+      "category": "Technology multinational",
+      "url": "https://www.amazon.jobs/en/search?country=IND"
+    },
+    {
+      "name": "NVIDIA",
+      "category": "Technology multinational",
+      "url": "https://www.nvidia.com/en-us/about-nvidia/careers/"
+    },
+    {
+      "name": "Salesforce",
+      "category": "Technology multinational",
+      "url": "https://careers.salesforce.com/en/locations/india/"
+    },
+    {
+      "name": "Oracle",
+      "category": "Technology multinational",
+      "url": "https://www.oracle.com/in/careers/"
+    },
+    {
+      "name": "SAP",
+      "category": "Technology multinational",
+      "url": "https://jobs.sap.com/"
+    },
+    {
+      "name": "Qualcomm",
+      "category": "Technology multinational",
+      "url": "https://careers.qualcomm.com/"
+    },
+    {
+      "name": "JPMorgan Chase",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://careers.jpmorgan.com/global/en/about-us/locations/india"
+    },
+    {
+      "name": "Goldman Sachs",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://www.goldmansachs.com/careers/"
+    },
+    {
+      "name": "Wells Fargo",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://www.wellsfargojobs.com/"
+    },
+    {
+      "name": "Walmart Global Tech",
+      "category": "Retail technology / GCC watchlist",
+      "url": "https://tech.walmart.com/content/walmart-global-tech/en_us/careers.html"
+    },
+    {
+      "name": "Citi",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://jobs.citi.com/"
+    },
+    {
+      "name": "Bank of America",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://careers.bankofamerica.com/"
+    },
+    {
+      "name": "American Express",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://www.americanexpress.com/en-us/careers/"
+    },
+    {
+      "name": "HSBC",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://www.hsbc.com/careers"
+    },
+    {
+      "name": "Barclays",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://search.jobs.barclays/"
+    },
+    {
+      "name": "Deutsche Bank",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://careers.db.com/"
+    },
+    {
+      "name": "UBS",
+      "category": "Financial services / GCC watchlist",
+      "url": "https://www.ubs.com/global/en/careers.html"
+    },
+    {
+      "name": "Mastercard",
+      "category": "Payments technology",
+      "url": "https://careers.mastercard.com/"
+    },
+    {
+      "name": "Visa",
+      "category": "Payments technology",
+      "url": "https://corporate.visa.com/en/careers.html"
+    },
+    {
+      "name": "Optum / UnitedHealth Group",
+      "category": "Healthcare / GCC watchlist",
+      "url": "https://careers.unitedhealthgroup.com/"
+    },
+    {
+      "name": "Target",
+      "category": "Retail / GCC watchlist",
+      "url": "https://corporate.target.com/careers/"
+    },
+    {
+      "name": "Lowe’s",
+      "category": "Retail / GCC watchlist",
+      "url": "https://talent.lowes.com/"
+    },
+    {
+      "name": "FedEx",
+      "category": "Logistics / GCC watchlist",
+      "url": "https://careers.fedex.com/"
+    },
+    {
+      "name": "PepsiCo",
+      "category": "Consumer goods / GCC watchlist",
+      "url": "https://www.pepsicojobs.com/"
+    },
+    {
+      "name": "Novartis",
+      "category": "Life sciences / GCC watchlist",
+      "url": "https://www.novartis.com/careers"
+    },
+    {
+      "name": "AstraZeneca",
+      "category": "Life sciences / GCC watchlist",
+      "url": "https://careers.astrazeneca.com/"
+    },
+    {
+      "name": "Sanofi",
+      "category": "Life sciences / GCC watchlist",
+      "url": "https://jobs.sanofi.com/"
+    },
+    {
+      "name": "Adobe",
+      "category": "Technology multinational",
+      "url": "https://careers.adobe.com/"
+    },
+    {
+      "name": "Cisco",
+      "category": "Technology multinational",
+      "url": "https://jobs.cisco.com/"
+    },
+    {
+      "name": "Intel",
+      "category": "Technology multinational",
+      "url": "https://jobs.intel.com/"
+    },
+    {
+      "name": "Dell",
+      "category": "Technology multinational",
+      "url": "https://jobs.dell.com/"
+    },
+    {
+      "name": "Micron",
+      "category": "Technology multinational",
+      "url": "https://careers.micron.com/"
+    },
+    {
+      "name": "Intuit",
+      "category": "Technology multinational",
+      "url": "https://www.intuit.com/careers/"
+    },
+    {
+      "name": "AMD",
+      "category": "Technology multinational",
+      "url": "https://careers.amd.com/"
+    },
+    {
+      "name": "Broadcom",
+      "category": "Technology multinational",
+      "url": "https://www.broadcom.com/company/careers"
+    },
+    {
+      "name": "IBM",
+      "category": "Technology multinational",
+      "url": "https://www.ibm.com/careers"
+    },
+    {
+      "name": "Accenture",
+      "category": "IT services",
+      "url": "https://www.accenture.com/in-en/careers"
+    },
+    {
+      "name": "Deloitte",
+      "category": "Professional services",
+      "url": "https://www.deloitte.com/in/en/careers.html"
+    },
+    {
+      "name": "Amgen",
+      "category": "Healthcare and life sciences",
+      "url": "https://careers.amgen.com/"
+    },
+    {
+      "name": "Bristol Myers Squibb",
+      "category": "Healthcare and life sciences",
+      "url": "https://careers.bms.com/"
+    },
+    {
+      "name": "Medtronic",
+      "category": "Healthcare and life sciences",
+      "url": "https://www.medtronic.com/en-us/our-company/careers.html"
+    },
+    {
+      "name": "FactSet",
+      "category": "Financial and business services",
+      "url": "https://www.factset.com/careers"
+    },
+    {
+      "name": "Chubb",
+      "category": "Financial and business services",
+      "url": "https://careers.chubb.com/"
+    },
+    {
+      "name": "Reckitt",
+      "category": "Consumer goods",
+      "url": "https://careers.reckitt.com/"
+    },
+    {
+      "name": "Warner Bros. Discovery",
+      "category": "Media and telecommunications",
+      "url": "https://careers.wbd.com/"
+    },
+    {
+      "name": "AT&T",
+      "category": "Media and telecommunications",
+      "url": "https://www.att.jobs/"
+    },
+    {
+      "name": "T-Mobile",
+      "category": "Media and telecommunications",
+      "url": "https://careers.t-mobile.com/"
+    },
+    {
+      "name": "HCA Healthcare",
+      "category": "Healthcare and life sciences",
+      "url": "https://careers.hcahealthcare.com/"
+    },
+    {
+      "name": "Charles Schwab",
+      "category": "Financial and business services",
+      "url": "https://www.schwabjobs.com/"
+    },
+    {
+      "name": "Vanguard",
+      "category": "Financial and business services",
+      "url": "https://www.vanguardjobs.com/"
+    },
+    {
+      "name": "Lloyds Banking Group",
+      "category": "Financial and business services",
+      "url": "https://www.lloydsbankinggroup.com/careers.html"
+    },
+    {
+      "name": "State Street",
+      "category": "Financial and business services",
+      "url": "https://careers.statestreet.com/"
+    },
+    {
+      "name": "Synchrony",
+      "category": "Financial and business services",
+      "url": "https://www.synchronycareers.com/"
+    },
+    {
+      "name": "Thomson Reuters",
+      "category": "Technology and professional services",
+      "url": "https://www.thomsonreuters.com/en/careers.html"
+    },
+    {
+      "name": "OpenText",
+      "category": "Technology and professional services",
+      "url": "https://careers.opentext.com/"
+    },
+    {
+      "name": "EPAM Systems",
+      "category": "Technology and professional services",
+      "url": "https://www.epam.com/careers"
+    },
+    {
+      "name": "ADP",
+      "category": "Financial and business services",
+      "url": "https://jobs.adp.com/"
+    },
+    {
+      "name": "Broadridge",
+      "category": "Financial and business services",
+      "url": "https://www.broadridge.com/about/careers"
+    },
+    {
+      "name": "Infor",
+      "category": "Technology and professional services",
+      "url": "https://www.infor.com/about/careers"
+    },
+    {
+      "name": "S&P Global",
+      "category": "Financial and business services",
+      "url": "https://www.spglobal.com/en/careers"
+    },
+    {
+      "name": "The D. E. Shaw Group",
+      "category": "Financial and business services",
+      "url": "https://www.deshaw.com/careers"
+    },
+    {
+      "name": "Tata Consultancy Services (TCS)",
+      "category": "Technology and professional services",
+      "url": "https://www.tcs.com/careers"
+    },
+    {
+      "name": "Cognizant",
+      "category": "Technology and professional services",
+      "url": "https://careers.cognizant.com/"
+    },
+    {
+      "name": "Infosys",
+      "category": "Technology and professional services",
+      "url": "https://www.infosys.com/careers/"
+    },
+    {
+      "name": "Wipro",
+      "category": "Technology and professional services",
+      "url": "https://careers.wipro.com/"
+    },
+    {
+      "name": "Capgemini",
+      "category": "Technology and professional services",
+      "url": "https://www.capgemini.com/careers/"
+    },
+    {
+      "name": "HCLTech",
+      "category": "Technology and professional services",
+      "url": "https://www.hcltech.com/careers"
+    },
+    {
+      "name": "Tech Mahindra",
+      "category": "Technology and professional services",
+      "url": "https://www.techmahindra.com/careers/"
+    },
+    {
+      "name": "EY",
+      "category": "Technology and professional services",
+      "url": "https://www.ey.com/en_in/careers"
+    },
+    {
+      "name": "PwC",
+      "category": "Technology and professional services",
+      "url": "https://www.pwc.in/careers.html"
+    },
+    {
+      "name": "KPMG",
+      "category": "Technology and professional services",
+      "url": "https://kpmg.com/in/en/careers.html"
+    },
+    {
+      "name": "Genpact",
+      "category": "Technology and professional services",
+      "url": "https://www.genpact.com/careers"
+    },
+    {
+      "name": "WNS",
+      "category": "Technology and professional services",
+      "url": "https://www.wns.com/careers"
+    },
+    {
+      "name": "Concentrix",
+      "category": "Technology and professional services",
+      "url": "https://jobs.concentrix.com/"
+    },
+    {
+      "name": "NTT DATA",
+      "category": "Technology and professional services",
+      "url": "https://www.nttdata.com/global/en/careers"
+    },
+    {
+      "name": "DXC Technology",
+      "category": "Technology and professional services",
+      "url": "https://careers.dxc.com/"
+    },
+    {
+      "name": "CGI",
+      "category": "Technology and professional services",
+      "url": "https://www.cgi.com/en/careers"
+    },
+    {
+      "name": "Virtusa",
+      "category": "Technology and professional services",
+      "url": "https://www.virtusa.com/careers"
+    },
+    {
+      "name": "Cyient",
+      "category": "Technology and professional services",
+      "url": "https://www.cyient.com/careers"
+    },
+    {
+      "name": "Dr. Reddy’s Laboratories",
+      "category": "Healthcare and life sciences",
+      "url": "https://careers.drreddys.com/"
+    },
+    {
+      "name": "Aurobindo Pharma",
+      "category": "Healthcare and life sciences",
+      "url": "https://www.aurobindo.com/careers/"
+    },
+    {
+      "name": "L&T Technology Services",
+      "category": "Technology and professional services",
+      "url": "https://www.ltts.com/careers"
+    },
+    {
+      "name": "Apple",
+      "category": "Technology and professional services",
+      "url": "https://jobs.apple.com/en-in/search?location=india-INDC"
+    },
+    {
+      "name": "Meta",
+      "category": "Technology and professional services",
+      "url": "https://www.metacareers.com/jobs/"
+    },
+    {
+      "name": "Eli Lilly",
+      "category": "Healthcare and life sciences",
+      "url": "https://careers.lilly.com/"
+    },
+    {
+      "name": "Siemens",
+      "category": "Technology and professional services",
+      "url": "https://www.siemens.com/global/en/company/jobs.html"
+    },
+    {
+      "name": "Unilever",
+      "category": "Consumer goods",
+      "url": "https://careers.unilever.com/"
+    },
+    {
+      "name": "Nestlé",
+      "category": "Consumer goods",
+      "url": "https://www.nestle.com/jobs"
+    },
+    {
+      "name": "DHL",
+      "category": "Technology and professional services",
+      "url": "https://careers.dhl.com/"
+    }
+  ],
+  "employer_profiles": {
+    "Experian": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Financial data",
+      "recognitions": [
+        {
+          "kind": "workplace",
+          "label": "World’s Best Workplaces",
+          "year": 2025,
+          "source_url": "https://www.experianplc.com/newsroom/press-releases/2025/experian-named-one-of-worlds-best-workplaces-for-second-consecutive-year"
+        }
+      ],
+      "location_evidence_url": "https://www.experian.com/careers/locations-teams/emea-apac",
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Western Digital": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Hardware",
+      "recognitions": [
+        {
+          "kind": "fortune500",
+          "label": "Fortune 500",
+          "year": 2026,
+          "source_url": "https://www.fortune.com/ranking/fortune500/"
+        }
+      ],
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Arista Networks": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Networking",
+      "recognitions": [
+        {
+          "kind": "fortune500",
+          "label": "Fortune 500",
+          "year": 2026,
+          "source_url": "https://www.arista.com/company/news/press-release/24401-pr-20260804"
+        }
+      ]
+    },
+    "Continental": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Engineering"
+    },
+    "Sutherland": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "IT services",
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "Eurofins": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Life sciences"
+    },
+    "Syngenta": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Life sciences"
+    },
+    "Informa": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Information services"
+    },
+    "Bosch": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Engineering",
+      "discovery_source_ids": [
+        "happening",
+        "flexiple"
+      ]
+    },
+    "NielsenIQ": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Data and analytics"
+    },
+    "ServiceNow": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Enterprise software",
+      "discovery_source_ids": [
+        "kas",
+        "flexiple"
+      ]
+    },
+    "Coupa": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Enterprise software"
+    },
+    "NICE": {
+      "category": "Multinational / GCC watchlist",
+      "sector": "Enterprise software"
+    },
+    "New Relic": {
+      "category": "Product and technology",
+      "sector": "Software and platforms",
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Elastic": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Fivetran": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "PubMatic": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "InMobi": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Zuora": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "6sense": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Samsara": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Mindtickle": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "CRED": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Paytm": {
+      "category": "Product and technology",
+      "sector": "Software and platforms",
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "Meesho": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "Everseen": {
+      "category": "Product and technology",
+      "sector": "Software and platforms"
+    },
+    "HighRadius": {
+      "category": "Product and technology",
+      "sector": "Financial software",
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Backbase": {
+      "category": "Product and technology",
+      "sector": "Banking technology",
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Arcesium": {
+      "category": "Product and technology",
+      "sector": "Financial technology",
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Tide": {
+      "category": "Product and technology",
+      "sector": "Financial technology",
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Deliveroo": {
+      "category": "Product and technology",
+      "sector": "Commerce and logistics technology",
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Redwood Software": {
+      "category": "Product and technology",
+      "sector": "Enterprise automation",
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "DAZN": {
+      "category": "Media and technology",
+      "sector": "Sports streaming technology",
+      "discovery_source_ids": [
+        "kas",
+        "happening",
+        "flexiple"
+      ]
+    },
+    "Infor": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Aurobindo Pharma": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "WNS": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "SAP": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple",
+        "india"
+      ]
+    },
+    "Intuit": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Eli Lilly": {
+      "discovery_source_ids": [
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "PwC": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple"
+      ]
+    },
+    "Broadcom": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Adobe": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Siemens": {
+      "discovery_source_ids": [
+        "flexiple",
+        "india"
+      ]
+    },
+    "Dell": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Infosys": {
+      "discovery_source_ids": [
+        "askdaman",
+        "hunt"
+      ]
+    },
+    "UBS": {
+      "discovery_source_ids": [
+        "happening",
+        "flexiple"
+      ]
+    },
+    "Airbnb": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "T-Mobile": {
+      "discovery_source_ids": [
+        "kas",
+        "flexiple"
+      ]
+    },
+    "EPAM Systems": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Novartis": {
+      "discovery_source_ids": [
+        "kas",
+        "askdaman",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "PepsiCo": {
+      "discovery_source_ids": [
+        "happening",
+        "flexiple",
+        "india"
+      ]
+    },
+    "Bristol Myers Squibb": {
+      "discovery_source_ids": [
+        "kas",
+        "flexiple"
+      ]
+    },
+    "DXC Technology": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple"
+      ]
+    },
+    "Reckitt": {
+      "discovery_source_ids": [
+        "kas"
+      ]
+    },
+    "Sanofi": {
+      "discovery_source_ids": [
+        "kas",
+        "happening",
+        "askdaman",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "Wells Fargo": {
+      "discovery_source_ids": [
+        "kas",
+        "happening",
+        "askdaman",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "Wipro": {
+      "discovery_source_ids": [
+        "askdaman",
+        "hunt"
+      ]
+    },
+    "EY": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple"
+      ]
+    },
+    "Vanguard": {
+      "discovery_source_ids": [
+        "happening",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "Genpact": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple"
+      ]
+    },
+    "Google": {
+      "discovery_source_ids": [
+        "happening",
+        "askdaman",
+        "flexiple",
+        "hunt",
+        "india"
+      ]
+    },
+    "Tech Mahindra": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "Oracle": {
+      "discovery_source_ids": [
+        "kas",
+        "happening",
+        "askdaman",
+        "flexiple",
+        "hunt",
+        "india"
+      ]
+    },
+    "Druva": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Warner Bros. Discovery": {
+      "discovery_source_ids": [
+        "kas",
+        "flexiple"
+      ]
+    },
+    "Goldman Sachs": {
+      "discovery_source_ids": [
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "Capgemini": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "Virtusa": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "Accenture": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple",
+        "hunt",
+        "india"
+      ]
+    },
+    "Charles Schwab": {
+      "discovery_source_ids": [
+        "happening"
+      ]
+    },
+    "AT&T": {
+      "discovery_source_ids": [
+        "kas"
+      ]
+    },
+    "Concentrix": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple"
+      ]
+    },
+    "IBM": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple",
+        "hunt",
+        "india"
+      ]
+    },
+    "Medtronic": {
+      "discovery_source_ids": [
+        "kas",
+        "flexiple"
+      ]
+    },
+    "L&T Technology Services": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "HCA Healthcare": {
+      "discovery_source_ids": [
+        "happening",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "HCLTech": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "Freshworks": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "KPMG": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple"
+      ]
+    },
+    "Synchrony": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple"
+      ]
+    },
+    "Visa": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Lloyds Banking Group": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "JPMorgan Chase": {
+      "discovery_source_ids": [
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "Amgen": {
+      "discovery_source_ids": [
+        "kas"
+      ]
+    },
+    "FactSet": {
+      "discovery_source_ids": [
+        "kas",
+        "flexiple"
+      ]
+    },
+    "Cisco": {
+      "discovery_source_ids": [
+        "flexiple",
+        "india"
+      ]
+    },
+    "Broadridge": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "NVIDIA": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Citi": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "DHL": {
+      "discovery_source_ids": [
+        "flexiple",
+        "india"
+      ]
+    },
+    "Amazon / AWS": {
+      "discovery_source_ids": [
+        "kas",
+        "happening",
+        "askdaman",
+        "flexiple",
+        "hunt",
+        "india",
+        "glassdoor"
+      ]
+    },
+    "Dr. Reddy’s Laboratories": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "Cognizant": {
+      "discovery_source_ids": [
+        "askdaman",
+        "hunt"
+      ]
+    },
+    "HSBC": {
+      "discovery_source_ids": [
+        "happening",
+        "askdaman",
+        "flexiple"
+      ]
+    },
+    "Micron": {
+      "discovery_source_ids": [
+        "kas",
+        "happening",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "State Street": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Walmart Global Tech": {
+      "discovery_source_ids": [
+        "flexiple",
+        "india"
+      ]
+    },
+    "Tata Consultancy Services (TCS)": {
+      "discovery_source_ids": [
+        "askdaman",
+        "hunt",
+        "glassdoor"
+      ]
+    },
+    "Deloitte": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple",
+        "hunt",
+        "glassdoor"
+      ]
+    },
+    "ADP": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Deutsche Bank": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "Nestlé": {
+      "discovery_source_ids": [
+        "flexiple",
+        "india"
+      ]
+    },
+    "Microsoft": {
+      "discovery_source_ids": [
+        "kas",
+        "happening",
+        "askdaman",
+        "flexiple",
+        "hunt",
+        "india"
+      ]
+    },
+    "NTT DATA": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "Unilever": {
+      "discovery_source_ids": [
+        "india"
+      ]
+    },
+    "Thomson Reuters": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Qualcomm": {
+      "discovery_source_ids": [
+        "happening",
+        "askdaman",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "CGI": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "Salesforce": {
+      "discovery_source_ids": [
+        "kas",
+        "askdaman",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "Apple": {
+      "discovery_source_ids": [
+        "flexiple",
+        "hunt",
+        "india"
+      ]
+    },
+    "Zscaler": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Intel": {
+      "discovery_source_ids": [
+        "askdaman",
+        "flexiple",
+        "hunt",
+        "india"
+      ]
+    },
+    "Optum / UnitedHealth Group": {
+      "discovery_source_ids": [
+        "kas",
+        "askdaman",
+        "flexiple"
+      ]
+    },
+    "Bank of America": {
+      "discovery_source_ids": [
+        "kas",
+        "happening",
+        "askdaman",
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "Target": {
+      "discovery_source_ids": [
+        "happening",
+        "flexiple"
+      ]
+    },
+    "Chubb": {
+      "discovery_source_ids": [
+        "kas",
+        "flexiple"
+      ]
+    },
+    "Cyient": {
+      "discovery_source_ids": [
+        "askdaman"
+      ]
+    },
+    "OpenText": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "AMD": {
+      "discovery_source_ids": [
+        "happening",
+        "flexiple"
+      ]
+    },
+    "The D. E. Shaw Group": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    },
+    "Meta": {
+      "discovery_source_ids": [
+        "flexiple",
+        "hunt"
+      ]
+    },
+    "S&P Global": {
+      "discovery_source_ids": [
+        "flexiple"
+      ]
+    }
+  },
+  "employer_discovery_sources": [
+    {
+      "id": "kas",
+      "title": "KAS Business Consulting",
+      "url": "https://kasbusinessconsulting.com/global-capability-centers-hyderabad-2026/",
+      "status": "reviewed",
+      "checked_at": "2026-11-01",
+      "note": "Company discovery reference only; vacancies and office eligibility must be checked on official careers sites."
+    },
+    {
+      "id": "ambitionbox",
+      "title": "AmbitionBox",
+      "url": "https://www.ambitionbox.com/fortune500-companies-in-hyderabad",
+      "status": "unavailable",
+      "checked_at": "2026-11-01",
+      "note": "Page could not be retrieved; no companies or ratings imported."
+    },
+    {
+      "id": "happening",
+      "title": "Happening Hyderabad",
+      "url": "https://happeninghyderabad.online/hyderabad-gccs-guide-2026/",
+      "status": "reviewed",
+      "checked_at": "2026-11-01",
+      "note": "Company discovery reference only; vacancies and office eligibility must be checked on official careers sites."
+    },
+    {
+      "id": "glassdoor",
+      "title": "Glassdoor",
+      "url": "https://www.glassdoor.co.in/Explore/top-companies-hyderabad_IL.14,23_IM1076.htm",
+      "status": "reviewed",
+      "checked_at": "2026-11-01",
+      "note": "Company discovery reference only; vacancies and office eligibility must be checked on official careers sites."
+    },
+    {
+      "id": "india",
+      "title": "The Companies India",
+      "url": "https://www.thecompaniesindia.com/multinational-companies-in-india/",
+      "status": "reviewed",
+      "checked_at": "2026-11-01",
+      "note": "Company discovery reference only; vacancies and office eligibility must be checked on official careers sites."
+    },
+    {
+      "id": "askdaman",
+      "title": "AskDaman",
+      "url": "https://askdaman.com/mnc-companies-in-hyderabad/",
+      "status": "reviewed",
+      "checked_at": "2026-11-01",
+      "note": "Company discovery reference only; vacancies and office eligibility must be checked on official careers sites."
+    },
+    {
+      "id": "flexiple",
+      "title": "Flexiple",
+      "url": "https://flexiple.com/gcc/hyderabad",
+      "status": "reviewed",
+      "checked_at": "2026-11-01",
+      "note": "Company discovery reference only; vacancies and office eligibility must be checked on official careers sites."
+    },
+    {
+      "id": "hunt",
+      "title": "Hunt Offices",
+      "url": "https://www.huntoffices.com/blog/top-mnc-companies-in-hyderabad-2026-list-locations-workspace-options",
+      "status": "reviewed",
+      "checked_at": "2026-11-01",
+      "note": "Company discovery reference only; vacancies and office eligibility must be checked on official careers sites."
+    }
   ]
 }

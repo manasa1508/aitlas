@@ -12,7 +12,7 @@ from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .db import get_db, settings, utcnow
-from .models import Company, Evidence, Item, JobRun, Knowledge, Opportunity, Source, UseCase
+from .models import Company, Employer, EmployerCatalog, Evidence, Item, JobRun, Knowledge, Opportunity, Source, UseCase
 from .jobs import JOB_SOURCE_KINDS, apply_job_filters, job_search_links, job_board_url
 from .intelligence import build_intelligence, employer_directory
 
@@ -345,10 +345,16 @@ def search(db: DB, q: str = Query(..., min_length=2, max_length=120), limit: int
     if not query_tokens:
         return {"query": q, "total": 0, "results": []}
     curated = [doc for doc in curated_documents(db) if query_tokens <= tokens(f"{doc['title']} {doc['snippet']}")]
+    provider_urls = {row.id: row.url for row in db.scalars(select(EmployerCatalog)).all()}
+    phrase = f"%{q.strip()}%"
+    employers = db.scalars(select(Employer).where(Employer.active.is_(True), or_(Employer.name.ilike(phrase), Employer.profile["aliases"].as_string().ilike(phrase)))).all()
+    for row in employers:
+        url = row.careers_url or next((provider_urls[entry["id"]] for entry in row.references if entry.get("present", True) and entry["id"] in provider_urls), None)
+        if url:
+            curated.append({"type": "employer", "title": row.name, "snippet": "Employer registry · official careers link available." if row.careers_url else "Discovered employer · official job feed and India office presence are unverified. Link opens the discovery reference.", "url": url, "date": iso(row.updated_at)})
     curated.sort(key=lambda doc: document_score(doc, query_tokens), reverse=True)
     conditions = item_search_conditions(q)
     base = select(Item).where(Item.active.is_(True))
-    phrase = f"%{q.strip()}%"
     phrase_condition = or_(Item.title.ilike(phrase), Item.summary.ilike(phrase), Item.details["company"].as_string().ilike(phrase), Item.details["location"].as_string().ilike(phrase))
     phrase_stmt = base.where(phrase_condition)
     phrase_count = db.scalar(select(func.count()).select_from(phrase_stmt.subquery())) or 0

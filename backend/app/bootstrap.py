@@ -7,6 +7,7 @@ from alembic.config import Config
 from .db import SessionLocal
 from .seed import seed
 from .sources import sync_defaults
+from .employers import sync_employer_defaults
 
 
 def main() -> None:
@@ -14,6 +15,7 @@ def main() -> None:
     command.upgrade(config, "head")
     with SessionLocal() as session:
         seed(session)
+        sync_employer_defaults(session)
         sync_defaults(session)
     print("AItlas schema and starter corpus ready")
 

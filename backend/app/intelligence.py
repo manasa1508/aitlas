@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from .db import utcnow
 from .jobs import JOB_SOURCE_KINDS, apply_job_filters, job_board_url
-from .models import Item, Source
+from .models import Employer, EmployerCatalog, Item, Source
 
 
 @lru_cache(maxsize=1)
@@ -75,8 +75,22 @@ def build_intelligence(db, serialize, days=7, topic="all"):
 
 
 def employer_directory(db, city="target", ai_only=False, role="all"):
-    employers = []
-    sources = db.scalars(select(Source).where(Source.kind.in_(JOB_SOURCE_KINDS), Source.enabled.is_(True)).order_by(Source.name)).all()
+    from .employers import name_key
+    all_sources = db.scalars(select(Source)).all()
+    source_map = {row.id: row for row in all_sources}
+    sources = [row for row in all_sources if row.kind in JOB_SOURCE_KINDS and row.enabled]
+    providers = db.scalars(select(EmployerCatalog).order_by(EmployerCatalog.title)).all()
+    registry = db.scalars(select(Employer).order_by(Employer.name)).all()
+    provider_info = {}
+    for provider in providers:
+        source = source_map.get(provider.source_id)
+        provider_info[provider.id] = {"id": provider.id, "title": provider.title, "url": provider.url, "status": provider.status,
+            "checked_at": provider.checked_at.isoformat() if provider.checked_at else None, "automatic": bool(source),
+            "last_error": source.last_error if source else None, "enabled": source.enabled if source else False,
+            "next_fetch_at": source.next_fetch_at.isoformat() if source and source.next_fetch_at else None,
+            "interval_minutes": source.interval_minutes if source else None,
+            "snapshot_size": (source.options or {}).get("snapshot_size") if source else None,
+            "snapshot_origin": (source.options or {}).get("snapshot_origin") if source else None}
     scoped = apply_job_filters(select(Item).where(Item.kind == "job", Item.active.is_(True)), city, ai_only=ai_only)
     if role != "all":
         scoped = scoped.where(Item.details["role"].as_string() == role)
@@ -86,19 +100,33 @@ def employer_directory(db, city="target", ai_only=False, role="all"):
         group = locations.setdefault(source_id, [])
         if value and len(group) < 8:
             group.append(value)
-    profiles = config().get("employer_profiles", {})
-    discovery_sources = config().get("employer_discovery_sources", [])
-    discovery_by_id = {entry["id"]: entry for entry in discovery_sources if entry["status"] == "reviewed"}
+    records, index = {}, {}
+    def record(row):
+        return {"id": row.id, "name": row.name, "category": "Company discovery", **(row.profile or {}), "url": row.careers_url,
+            "open_roles": None, "locations": [], "coverage": "official_link" if row.careers_url else "discovery_only",
+            "last_checked": None, "source_ids": [], "discovery_sources": [{**provider_info[entry["id"]], "listed_name": entry.get("listed_name")} for entry in row.references if entry.get("present", True) and entry["id"] in provider_info and provider_info[entry["id"]]["status"] == "reviewed"]}
+    for row in registry:
+        for value in [row.name, *(row.profile or {}).get("aliases", [])]:
+            index[name_key(value)] = row
+        if row.active:
+            records[row.id] = record(row)
     for source in sources:
         name = str((source.options or {}).get("company") or source.name)
-        career_url = job_board_url(source)
-        employers.append({"name": name, "category": "Product and technology", **profiles.get(name, {}), "open_roles": counts.get(source.id, 0), "locations": locations.get(source.id, []), "url": career_url, "coverage": "public_feed", "adapter": source.kind, "last_error": source.last_error, "last_checked": source.last_success_at.isoformat() if source.last_success_at else None})
-    connected_names = {row["name"].casefold() for row in employers}
-    links_only = [entry for entry in config()["career_links"] if entry["name"].casefold() not in connected_names]
-    employers.extend({**entry, **profiles.get(entry["name"], {}), "open_roles": None, "locations": [], "coverage": "official_link", "last_checked": None} for entry in links_only)
-    for employer in employers:
-        employer["discovery_sources"] = [discovery_by_id[key] for key in employer.get("discovery_source_ids", []) if key in discovery_by_id]
-    return {"employers": employers, "city": city, "ai_only": ai_only, "role": role,
-        "discovery_sources": discovery_sources,
-        "coverage_summary": {"connected_employers": len(sources), "synced_employers": sum(bool(source.last_success_at) for source in sources), "failing_employers": sum(bool(source.last_error) for source in sources), "career_links_only": len(links_only), "matching_roles": sum(counts.get(source.id, 0) for source in sources)},
-        "rating_status": "Employee ratings are not connected. Dated awards and list membership are cited where verified; they do not rate an individual role or team. Coverage is a selected employer registry, not every GCC or Fortune 500 company."}
+        row = index.get(name_key(name))
+        identifier = row.id if row else "source-" + source.id
+        if identifier not in records:
+            records[identifier] = record(row) if row else {"id": identifier, "name": name, "category": "Product and technology", "discovery_sources": [], "locations": [], "source_ids": []}
+        employer = records[identifier]
+        employer["coverage"], employer["url"] = "public_feed", job_board_url(source)
+        employer["open_roles"] = (employer.get("open_roles") or 0) + counts.get(source.id, 0)
+        employer["locations"] = list(dict.fromkeys([*employer["locations"], *locations.get(source.id, [])]))[:8]
+        employer["source_ids"].append(source.id)
+        employer["last_error"] = source.last_error or employer.get("last_error")
+        checked = source.last_success_at.isoformat() if source.last_success_at else None
+        employer["last_checked"] = min(employer["last_checked"], checked) if employer.get("last_checked") and checked else checked or employer.get("last_checked")
+    employers = sorted(records.values(), key=lambda row: ({"public_feed": 0, "official_link": 1, "discovery_only": 2}[row["coverage"]], row["name"].casefold()))
+    for provider in provider_info.values():
+        provider["matched_employers"] = sum(any(ref["id"] == provider["id"] for ref in row["discovery_sources"]) for row in employers)
+    return {"employers": employers, "city": city, "ai_only": ai_only, "role": role, "discovery_sources": list(provider_info.values()),
+        "coverage_summary": {"catalog_employers": len(employers), "connected_employers": sum(row["coverage"] == "public_feed" for row in employers), "connected_feeds": len(sources), "synced_employers": sum(bool(source.last_success_at) for source in sources), "failing_employers": sum(bool(source.last_error) for source in sources), "career_links_only": sum(row["coverage"] == "official_link" for row in employers), "discovery_only": sum(row["coverage"] == "discovery_only" for row in employers), "matching_roles": sum(counts.get(source.id, 0) for source in sources)},
+        "rating_status": "Employee ratings are not connected. Dated recognition evidence is separate from discovery directories. US500 is an unaffiliated public-company directory, not official Fortune verification. Discovered companies may have no verified India office or indexed vacancies."}

@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from .db import settings, utcnow
 from .models import Item, JobRun, Source
 from .jobs import ai_related, target_location
+from .employers import parse_us500, register_configured_sources, sync_catalog_snapshot
 
 LOG = logging.getLogger(__name__)
 
@@ -421,6 +422,17 @@ def ingest_pinpoint_jobs(session: Session, client: httpx.Client, source: Source)
     return sync_job_snapshot(session, source, normalized)
 
 
+def ingest_employer_catalog(session: Session, client: httpx.Client, source: Source) -> int:
+    options = source.options or {}
+    response = get_with_retry(client, source.url)
+    if len(response.content) > 4 * 1024 * 1024:
+        raise ValueError("Employer directory exceeded 4 MiB")
+    records = parse_us500(response.text, min_rows=int(options.get("min_rows", 400)), max_rows=int(options.get("max_rows", 750)), previous_size=int(options.get("snapshot_size", 0)))
+    count = sync_catalog_snapshot(session, source, records)
+    source.options = {**source.options, "snapshot_origin": "live_http"}
+    return count
+
+
 def ingest_hf_models(session: Session, client: httpx.Client, source: Source) -> int:
     limit = min(100, max(1, int((source.options or {}).get("limit", 30))))
     response = get_with_retry(client, source.url, params={"sort": "trendingScore", "direction": "-1", "limit": limit})
@@ -475,7 +487,9 @@ def get_with_retry(client: httpx.Client, url: str, *, params: dict | None = None
                     chunks.append(chunk)
                 decoded_headers = {key: value for key, value in streamed.headers.items() if key.lower() not in {"content-encoding", "content-length", "transfer-encoding"}}
                 response = httpx.Response(streamed.status_code, content=b"".join(chunks), headers=decoded_headers, request=streamed.request)
-            if response.status_code not in {429, 500, 502, 503, 504} or attempt:
+            # A rate limit is handled by the persistent scheduler, not an
+            # immediate retry that could violate Retry-After.
+            if response.status_code not in {500, 502, 503, 504} or attempt:
                 response.raise_for_status()
                 return response
             retry_after = response.headers.get("Retry-After", "")
@@ -489,6 +503,8 @@ def get_with_retry(client: httpx.Client, url: str, *, params: dict | None = None
 
 
 def run_ingestion(session: Session, *, force: bool = False) -> JobRun | None:
+    register_configured_sources(session)
+    session.commit()
     now = utcnow()
     sources = session.scalars(select(Source).where(Source.enabled.is_(True)).order_by(Source.name)).all()
 
@@ -504,7 +520,7 @@ def run_ingestion(session: Session, *, force: bool = False) -> JobRun | None:
     run = JobRun(status="running", errors=[])
     session.add(run)
     session.commit()
-    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "smartrecruiters": ingest_smartrecruiters, "lever_jobs": ingest_lever_jobs, "pinpoint_jobs": ingest_pinpoint_jobs, "hf_models": ingest_hf_models, "hf_papers": ingest_hf_papers}
+    adapters = {"rss": ingest_feed, "arxiv": ingest_arxiv, "hacker_news": ingest_hn, "github_repos": ingest_github, "greenhouse_jobs": ingest_greenhouse_jobs, "smartrecruiters": ingest_smartrecruiters, "lever_jobs": ingest_lever_jobs, "pinpoint_jobs": ingest_pinpoint_jobs, "employer_catalog": ingest_employer_catalog, "hf_models": ingest_hf_models, "hf_papers": ingest_hf_papers}
     headers = {"User-Agent": settings.user_agent, "Accept": "application/json, application/atom+xml, application/rss+xml, */*"}
     errors: list[str] = []
     inserted = 0
@@ -536,6 +552,15 @@ def run_ingestion(session: Session, *, force: bool = False) -> JobRun | None:
                 source.last_error = str(exc)[:500]
                 source.failure_count += 1
                 source.next_fetch_at = utcnow() + timedelta(minutes=min(360, 5 * 2 ** min(source.failure_count - 1, 6)))
+                if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429:
+                    retry_after = exc.response.headers.get("Retry-After", "")
+                    try:
+                        retry_at = utcnow() + timedelta(seconds=max(0, int(retry_after))) if retry_after.isdigit() else parsedate_to_datetime(retry_after)
+                        if retry_at.tzinfo is None:
+                            retry_at = retry_at.replace(tzinfo=timezone.utc)
+                        source.next_fetch_at = max(source.next_fetch_at, min(retry_at, utcnow() + timedelta(days=1)))
+                    except (ValueError, TypeError, OverflowError):
+                        pass
                 errors.append(f"{source.name}: {type(exc).__name__}: {exc}")
                 session.commit()
                 LOG.warning("%s failed: %s", source.name, exc)

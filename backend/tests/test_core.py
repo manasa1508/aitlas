@@ -20,6 +20,10 @@ from sqlalchemy import func, select  # noqa: E402
 import json  # noqa: E402
 
 
+def pinpoint_posting(identifier="one", location="India - Hyderabad"):
+    return {"id": identifier, "title": "Machine Learning Engineer", "url": f"https://careers.dazn.com/en/postings/{identifier}", "description": "Develop inference systems", "job": {"department": {"name": "Engineering"}}, "location": {"name": location}, "employment_type_text": "Permanent", "workplace_type_text": "Hybrid"}
+
+
 def setup_module():
     Base.metadata.create_all(engine)
     with SessionLocal() as session:
@@ -29,6 +33,84 @@ def setup_module():
 def teardown_module():
     engine.dispose()
     _temp.cleanup()
+
+
+def test_pinpoint_filters_and_first_seen_dates():
+    import httpx
+    payload = {"data": [pinpoint_posting(), pinpoint_posting("london", "London"), pinpoint_posting("pakistan", "Hyderabad, Sindh, Pakistan")]}
+    with SessionLocal() as session, httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+        source = upsert_source(session, "pinpoint-test", "DAZN test", "https://careers.dazn.com/postings.json", "pinpoint_jobs")
+        source.options = {"company": "Daznprobe", "target_cities_only": True}
+        assert ingest.ingest_pinpoint_jobs(session, client, source) == 1
+        session.commit()
+        row = session.scalar(select(Item).where(Item.source_id == source.id))
+        first_seen = row.published_at
+        assert row.details["date_basis"] == "first_seen"
+        assert row.details["ai_related"] is True
+        assert row.details["workplace_type"] == "Hybrid"
+        assert ingest.ingest_pinpoint_jobs(session, client, source) == 0
+        assert row.published_at == first_seen
+    with TestClient(app) as client:
+        assert client.get("/api/items", params={"kind":"job", "city":"hyderabad", "company":"Daznprobe", "ai_only":True}).json()["total"] == 1
+
+
+def test_pinpoint_malformed_snapshots_preserve_jobs_and_complete_misses_expire():
+    import httpx
+    import pytest
+    with SessionLocal() as session:
+        source = upsert_source(session, "pinpoint-protect", "Pinpoint protect", "https://careers.dazn.com/postings.json", "pinpoint_jobs")
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"data": [pinpoint_posting("existing")]}))) as client:
+            ingest.ingest_pinpoint_jobs(session, client, source)
+        session.commit()
+        row = session.scalar(select(Item).where(Item.source_id == source.id))
+        checked = row.details["last_checked_at"]
+        malformed = [None, {}, {"data": {}}, {"data": [], "links": {"next": "/page2"}}, {"data": [], "meta": {"total": 2}}, {"data": [], "errors": ["unavailable"]}, {"data": [pinpoint_posting("dup"), pinpoint_posting("dup")]}, {"data": [pinpoint_posting("new"), {**pinpoint_posting("bad"), "location": None}]}, {"data": [{**pinpoint_posting("evil"), "url":"https://careers.dazn.com.evil.example/en/postings/evil"}]}]
+        for payload in malformed:
+            with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client, pytest.raises(ValueError):
+                ingest.ingest_pinpoint_jobs(session, client, source)
+            assert row.active and row.details["misses"] == 0
+            assert row.details["last_checked_at"] == checked
+            assert session.scalar(select(func.count()).select_from(Item).where(Item.source_id == source.id)) == 1
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"data": []}))) as client:
+            ingest.ingest_pinpoint_jobs(session, client, source)
+            assert row.active
+            ingest.ingest_pinpoint_jobs(session, client, source)
+            assert not row.active
+
+
+def test_pinpoint_source_validation_and_public_board_links():
+    import pytest
+    from app.sources import validate_source
+    from app.jobs import job_board_url
+    for endpoint in ("https://careers.dazn.com/postings.json", "https://example.pinpointhq.com/postings.json"):
+        validate_source("pinpoint_jobs", endpoint, 120, {})
+        assert job_board_url(Source(kind="pinpoint_jobs", url=endpoint)) == endpoint.removesuffix("/postings.json")
+    for endpoint in ("https://careers.dazn.com.evil.example/postings.json", "https://unknown.example/postings.json", "https://example.pinpointhq.com/jobs.json", "https://example.pinpointhq.com/postings.json?location_id=1", "https://example.pinpointhq.com:8443/postings.json"):
+        with pytest.raises(ValueError):
+            validate_source("pinpoint_jobs", endpoint, 120, {})
+    assert job_board_url(Source(kind="lever_jobs",url="https://api.eu.lever.co/v0/postings/example")) == "https://jobs.eu.lever.co/example"
+    assert job_board_url(Source(kind="smartrecruiters",url="https://api.smartrecruiters.com/v1/companies/Example/postings")) == "https://jobs.smartrecruiters.com/Example"
+    assert job_board_url(Source(kind="greenhouse_jobs",url="https://boards-api.greenhouse.io/v1/boards/example/jobs")) == "https://job-boards.greenhouse.io/example"
+
+
+def test_company_directory_discovery_evidence_is_not_ratings_or_job_data():
+    from app.intelligence import config, employer_directory
+    data = config()
+    references = {row["id"]:row for row in data["employer_discovery_sources"]}
+    assert len(references) == len(data["employer_discovery_sources"])
+    assert len({row["url"] for row in references.values()}) == len(references)
+    assert references["ambitionbox"]["status"] == "unavailable"
+    for name, profile in data["employer_profiles"].items():
+        assert all(references[key]["status"] == "reviewed" for key in profile.get("discovery_source_ids", []))
+        assert not {"rating", "salary", "headcount"}.intersection(profile)
+    assert "flexiple" in data["employer_profiles"]["Backbase"]["discovery_source_ids"]
+    assert "kas" in data["employer_profiles"]["Amgen"]["discovery_source_ids"]
+    with SessionLocal() as session:
+        directory = employer_directory(session)
+        amgen = next(row for row in directory["employers"] if row["name"] == "Amgen")
+        assert amgen["coverage"] == "official_link" and amgen["open_roles"] is None
+        assert amgen["discovery_sources"]
+        assert all(ref["id"] != "ambitionbox" for row in directory["employers"] for ref in row["discovery_sources"])
 
 
 def test_knowledge_and_grounded_ask():
@@ -117,7 +199,7 @@ def test_daily_brief_counts_beyond_first_page():
     now = datetime.now(timezone.utc)
     with SessionLocal() as session:
         upsert_source(session, "bulk", "Bulk test", "https://example.org/feed", "rss")
-        before = session.scalar(select(func.count()).select_from(Item).where(Item.published_at >= now - timedelta(hours=24))) or 0
+        before = session.scalar(select(func.count()).select_from(Item).where(Item.published_at >= now - timedelta(hours=24), Item.kind.in_(("news", "paper", "repo", "model")))) or 0
         session.add_all(Item(kind="news", title=f"AI news item {i}", summary="Test item", url=f"https://example.org/bulk/{i}", source_id="bulk", published_at=now, tags=["Research"], score=50, title_fingerprint=f"bulk {i}") for i in range(121))
         session.commit()
     with TestClient(app) as client:

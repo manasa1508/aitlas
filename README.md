@@ -54,7 +54,7 @@ If your network inspects TLS traffic through an organization certificate, set `C
 
 ## Included features
 
-- Seventy-five default sources spanning public publisher and developer RSS feeds, arXiv, Hacker News, GitHub repositories, Hugging Face model listings, and 49 selected Greenhouse, SmartRecruiters, Lever and Pinpoint employer job feeds.
+- Configured sources spanning public publisher and developer RSS feeds, arXiv, Hacker News, GitHub repositories, Hugging Face model listings, and selected Greenhouse, SmartRecruiters, Lever and Pinpoint employer feeds, plus daily US500 company discovery.
 - Database-backed source registry with per-source polling schedules, exponential failure backoff, and an operator CLI for adding feeds or changing source options without code edits.
 - URL and near-title deduplication, bounded fetches, error isolation by source, sync health and timestamps.
 - Business and developer filters, a model watch, live job search by role/company/location, and a company hiring pulse that separates news mentions from verified claims.
@@ -100,10 +100,12 @@ The Intelligence view adds research discoveries, topic-volume trends, top starre
 
 Signals default to the last seven days, newest first, with measured-attention filters: repositories with at least 25 stars, Daily Papers entries with at least five votes, current model trending ranks, and Hacker News entries with at least ten points. Other publisher feeds have no popularity threshold. Switch to All recent or the full archive to include unranked discoveries. Attention is not technical quality. Expand cards for excerpts, attention evidence and paper code links when supplied.
 
-Jobs default to Hyderabad, Bengaluru/Bangalore, Pune and Chennai. Existing role and employer text search remain; city and AI-related-role filters combine with them. AI relevance uses titles/departments rather than corporate descriptions. The registry now has 49 employer feeds across Greenhouse, SmartRecruiters, Lever (including EU boards) and Pinpoint. SmartRecruiters reads only PUBLIC India postings. Paginated adapters complete their snapshots before availability changes, and two successful misses are required for expiry. The employer directory has 91 additional official careers links whose roles are not indexed. City-specific LinkedIn, Indeed, Naukri and Foundit searches carry the current keywords and role hints; their results stay on those services. Selected Fortune 500 membership and workplace recognitions have dated source links. No employee-rating dataset is connected, so no employer ratings are invented. Registry and watchlists remain editable JSON plus database configuration.
+Jobs default to Hyderabad, Bengaluru/Bangalore, Pune and Chennai. Existing role and employer text search remain; city and AI-related-role filters combine with them. AI relevance uses titles/departments rather than corporate descriptions. The registry has employer feeds across Greenhouse, SmartRecruiters, Lever (including EU boards) and Pinpoint. SmartRecruiters reads only PUBLIC India postings. Paginated adapters complete their snapshots before availability changes, and two successful misses are required for expiry. The employer directory distinguishes connected feeds, official careers links and discovery records. City-specific LinkedIn, Indeed, Naukri and Foundit searches carry the current keywords and role hints; their results stay on those services. Selected Fortune 500 membership and workplace recognitions have dated source links. No employee-rating dataset is connected, so no employer ratings are invented. Runtime employer metadata is stored in the database; JSON files supply starter records without overwriting existing edits.
 
 [BACKEND_DECISION.md](BACKEND_DECISION.md) compares Python, TypeScript, Go, Java, Rust, .NET and Django. [ARCHITECTURE.md](ARCHITECTURE.md) explicitly separates today's single-host deployment from the proposed highly available architecture.
 
 See [JOBS_DATA.md](JOBS_DATA.md) for current employer coverage, provider access restrictions, expansion instructions and aggregation options.
 
 Company discovery also draws on cited GCC and MNC directories. The watchlist can filter by discovery directory and separates these references from live vacancy sources and verified recognition evidence. See [JOBS_DATA.md](JOBS_DATA.md).
+
+[EMPLOYER_ARCHITECTURE.md](EMPLOYER_ARCHITECTURE.md) explains the database-backed employer registry, automatic discovery, verified job-feed mappings and source freshness.

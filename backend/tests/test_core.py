@@ -250,6 +250,116 @@ def test_smartrecruiters_partial_snapshot_never_expires_jobs():
         assert session.scalar(select(func.count()).select_from(Item).where(Item.source_id==source.id)) == 0
 
 
+def test_lever_pagination_locations_and_date_provenance():
+    import httpx
+    calls = []
+    def respond(request):
+        offset = int(request.url.params["skip"])
+        calls.append(offset)
+        assert request.url.params["mode"] == "json"
+        return httpx.Response(200, json=[{"id": str(i), "text": "Machine Learning Engineer", "hostedUrl": f"https://jobs.lever.co/pagination/{i}", "createdAt": 1790812800000 if i else None, "categories": {"location": "London", "allLocations": ["London", "Bengaluru, India"], "department": "AI", "commitment": "Full-time"}} for i in range(offset, min(offset + 100, 101))])
+    with SessionLocal() as session, httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        source = upsert_source(session, "lever-pages", "Lever pages", "https://api.lever.co/v0/postings/pagination", "lever_jobs")
+        source.options = {"company": "Paginationprobe", "target_cities_only": True}
+        assert ingest.ingest_lever_jobs(session, client, source) == 101
+        assert calls == [0, 100]
+        session.commit()
+        row = session.scalar(select(Item).where(Item.url == "https://jobs.lever.co/pagination/0"))
+        first_seen = row.published_at
+        assert row.details["date_basis"] == "first_seen"
+        assert row.details["ai_related"] is True
+        assert row.details["last_checked_at"]
+        assert row.details["employment_type"] == "Full-time"
+        assert "Bengaluru" in row.details["location"]
+        assert ingest.ingest_lever_jobs(session, client, source) == 0
+        assert row.published_at == first_seen
+    with TestClient(app) as client:
+        assert client.get("/api/items", params={"kind": "job", "city": "bengaluru", "company": "Paginationprobe", "ai_only": True}).json()["total"] == 101
+
+
+def test_lever_repeated_or_failed_pages_preserve_existing_jobs():
+    import httpx
+    import pytest
+    posting = lambda i: {"id": str(i), "text": "Software Engineer", "hostedUrl": f"https://jobs.lever.co/protect/{i}", "categories": {"location": "Pune"}}
+    with SessionLocal() as session:
+        source = upsert_source(session, "lever-protect", "Lever protect", "https://api.lever.co/v0/postings/protect", "lever_jobs")
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=[posting("existing")]))) as client:
+            ingest.ingest_lever_jobs(session, client, source)
+        session.commit()
+        row = session.scalar(select(Item).where(Item.source_id == source.id))
+        original_checked = row.details["last_checked_at"]
+        for failure in ("repeated", "http"):
+            def respond(request):
+                if request.url.params["skip"] == "0":
+                    return httpx.Response(200, json=[posting(i) for i in range(100)])
+                return httpx.Response(200, json=[posting(0)]) if failure == "repeated" else httpx.Response(403)
+            with httpx.Client(transport=httpx.MockTransport(respond)) as client, pytest.raises((ValueError, httpx.HTTPStatusError)):
+                ingest.ingest_lever_jobs(session, client, source)
+            assert row.active and row.details["misses"] == 0
+            assert row.details["last_checked_at"] == original_checked
+            assert session.scalar(select(func.count()).select_from(Item).where(Item.source_id == source.id)) == 1
+
+
+def test_lever_eu_validation_and_successful_expiry():
+    import httpx
+    import pytest
+    from app.sources import validate_source
+    endpoint = "https://api.eu.lever.co/v0/postings/example"
+    validate_source("lever_jobs", endpoint, 120, {})
+    for invalid in ("https://api.lever.co.evil.example/v0/postings/example", "https://api.lever.co/private/example"):
+        with pytest.raises(ValueError):
+            validate_source("lever_jobs", invalid, 120, {})
+    payload = [{"id": "eu", "text": "Software Engineer", "hostedUrl": "https://jobs.eu.lever.co/example/eu", "categories": {"location": "Chennai"}}]
+    with SessionLocal() as session, httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+        source = upsert_source(session, "lever-eu", "Lever EU", endpoint, "lever_jobs")
+        ingest.ingest_lever_jobs(session, client, source)
+        session.commit()
+        row = session.scalar(select(Item).where(Item.source_id == source.id))
+        payload[0]["hostedUrl"] = "https://jobs.eu.lever.co.evil.example/example/eu"
+        with pytest.raises(ValueError, match="Invalid public"):
+            ingest.ingest_lever_jobs(session, client, source)
+        assert row.details["misses"] == 0
+        payload.clear()
+        ingest.ingest_lever_jobs(session, client, source)
+        assert row.active and row.details["misses"] == 1
+        ingest.ingest_lever_jobs(session, client, source)
+        assert not row.active
+
+
+def test_external_job_searches_preserve_city_keywords_and_scope():
+    from urllib.parse import parse_qs, urlparse
+    with TestClient(app) as client:
+        data = client.get("/api/job-search-links", params={"city": "hyderabad", "q": "R&D / C++", "ai_only": True}).json()
+        assert len(data["searches"]) == 1
+        assert "not downloaded or indexed" in data["coverage"]
+        links = {row["name"]: row["url"] for row in data["searches"][0]["links"]}
+        linkedin = parse_qs(urlparse(links["LinkedIn"]).query)
+        assert linkedin["keywords"] == ["R&D / C++ AI"]
+        assert linkedin["location"] == ["Hyderabad, Telangana, India"]
+        assert len(client.get("/api/job-search-links", params={"city": "all"}).json()["searches"]) == 4
+        assert client.get("/api/job-search-links", params={"city": "invalid"}).status_code == 422
+
+
+def test_employer_directory_counts_combine_filters_and_disclose_coverage():
+    from app.intelligence import employer_directory
+    with SessionLocal() as session:
+        source = session.get(Source, "city-test")
+        source.enabled = True
+        source.options = {"company": "Cityprobe"}
+        data = employer_directory(session, "bengaluru", True, "Engineering")
+        employer = next(row for row in data["employers"] if row["name"] == "Cityprobe")
+        assert employer["open_roles"] == 1
+        assert employer["coverage"] == "public_feed"
+        assert data["coverage_summary"]["career_links_only"] >= 40
+        assert employer_directory(session, "bengaluru", True, "Business & operations")["coverage_summary"]["matching_roles"] == 0
+        assert "ratings are not connected" in data["rating_status"]
+        for row in data["employers"]:
+            if row["coverage"] == "official_link":
+                assert row["open_roles"] is None
+            for recognition in row.get("recognitions", []):
+                assert recognition["source_url"].startswith("https://") and recognition["year"]
+
+
 def test_daily_papers_updates_legacy_arxiv_record_and_attention():
     import httpx
     with SessionLocal() as session:
